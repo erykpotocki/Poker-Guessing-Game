@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1045 &1
+EditorBuildSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/BootLoading.unity
+    guid: 9bf257f0eaa0f2f4e88442f8808ceaed
+  - enabled: 1
+    path: Assets/Scenes/MainMenu.unity
+    guid: 0e66345011877b34ba7298fcd93866d9
+  - enabled: 1
+    path: Assets/Scenes/CreateRoom.unity
+    guid: 7dd9d7ef0aba1974a9612e274dcb6fec
+  - enabled: 1
+    path: Assets/Scenes/GameModeSelect.unity
+    guid: 8b676f70ad829c64da628e94188d0cb2
+  - enabled: 1
+    path: Assets/Scenes/JoinRoom.unity
+    guid: 3d8ab4da358581942ac2a8af5579fb9e
+  - enabled: 1
+    path: Assets/Scenes/Hot Seat.unity
+    guid: 4c40c224cc65a54498795c212a13c945
+  - enabled: 1
+    path: Assets/Scenes/Lobby.unity
+    guid: 4ef85a82df37dc54dab27cbee5ba0682
+  - enabled: 1
+    path: Assets/Scenes/Game.unity
+    guid: 649f106af69e8b54c9a272403dc4cc07
+  m_configObjects:
+    com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 3590b91b4603b465dbb4216d601bff33, type: 3}
+  m_UseUCBPForAssetBundles: 0

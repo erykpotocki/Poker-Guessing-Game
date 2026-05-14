@@ -1,0 +1,884 @@
+fileFormatVersion: 2
+guid: d280f3a99f7e9334f8848c6a1d72c95a
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 4878821078014831891
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_0"
+  - first:
+      213: -5134226986286649822
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_1"
+  - first:
+      213: 2862223991090966140
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_2"
+  - first:
+      213: 3867304127351490580
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_3"
+  - first:
+      213: 1474129151542193073
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_4"
+  - first:
+      213: -3914531016449834997
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_5"
+  - first:
+      213: 5070353511754439179
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_6"
+  - first:
+      213: -3695823598638266946
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_7"
+  - first:
+      213: 5969406794014837899
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_8"
+  - first:
+      213: 6535793792802607430
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_9"
+  - first:
+      213: -4127678544546148069
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_10"
+  - first:
+      213: -8004015557453110755
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_11"
+  - first:
+      213: -8806598652182864812
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_12"
+  - first:
+      213: 5767181019744597593
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_13"
+  - first:
+      213: -8762053887710269046
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_14"
+  - first:
+      213: -7800025743436301366
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_15"
+  - first:
+      213: 1603877670080618321
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_16"
+  - first:
+      213: 2765828025723890251
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_17"
+  - first:
+      213: -6114000816705886466
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_18"
+  - first:
+      213: -4784397920442216585
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_19"
+  - first:
+      213: 3425997555544807718
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_20"
+  - first:
+      213: 3504845560942132630
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_21"
+  - first:
+      213: -8028558786329275852
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_22"
+  - first:
+      213: 301644683055262781
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_23"
+  - first:
+      213: 8995537272729039093
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_24"
+  - first:
+      213: -4903729484450117974
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_25"
+  - first:
+      213: 1641096474701323972
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_26"
+  - first:
+      213: 7264076653975359749
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_27"
+  - first:
+      213: -869983413447336715
+    second: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_28"
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_0"
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 329
+        height: 1024
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 31d23cddbed05b340800000000000000
+      internalID: 4878821078014831891
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_1"
+      rect:
+        serializedVersion: 2
+        x: 418
+        y: 0
+        width: 551
+        height: 1024
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 22ee82e12cf8fb8b0800000000000000
+      internalID: -5134226986286649822
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_2"
+      rect:
+        serializedVersion: 2
+        x: 759
+        y: 918
+        width: 12
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c7ee3902e89a8b720800000000000000
+      internalID: 2862223991090966140
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_3"
+      rect:
+        serializedVersion: 2
+        x: 960
+        y: 0
+        width: 576
+        height: 1024
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 418003d2d9c6ba530800000000000000
+      internalID: 3867304127351490580
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_4"
+      rect:
+        serializedVersion: 2
+        x: 1032
+        y: 751
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1bb68be27a8257410800000000000000
+      internalID: 1474129151542193073
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_5"
+      rect:
+        serializedVersion: 2
+        x: 1041
+        y: 747
+        width: 7
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b004246d7cacca9c0800000000000000
+      internalID: -3914531016449834997
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_6"
+      rect:
+        serializedVersion: 2
+        x: 46
+        y: 9
+        width: 294
+        height: 725
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b0a17c1b7a38d5640800000000000000
+      internalID: 5070353511754439179
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_7"
+      rect:
+        serializedVersion: 2
+        x: 124
+        y: 729
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eb509a2b40cc5bcc0800000000000000
+      internalID: -3695823598638266946
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_8"
+      rect:
+        serializedVersion: 2
+        x: 340
+        y: 67
+        width: 270
+        height: 598
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b8cce051ad797d250800000000000000
+      internalID: 5969406794014837899
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_9"
+      rect:
+        serializedVersion: 2
+        x: 1211
+        y: 489
+        width: 15
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 641d33193ddc3ba50800000000000000
+      internalID: 6535793792802607430
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_10"
+      rect:
+        serializedVersion: 2
+        x: 1258
+        y: 102
+        width: 248
+        height: 419
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b11535dab3a87b6c0800000000000000
+      internalID: -4127678544546148069
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_11"
+      rect:
+        serializedVersion: 2
+        x: 1227
+        y: 450
+        width: 10
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d12ae41f1460ce090800000000000000
+      internalID: -8004015557453110755
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_12"
+      rect:
+        serializedVersion: 2
+        x: 1221
+        y: 423
+        width: 16
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 45cd4396f2da8c580800000000000000
+      internalID: -8806598652182864812
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_13"
+      rect:
+        serializedVersion: 2
+        x: 349
+        y: 287
+        width: 13
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9567045e494290050800000000000000
+      internalID: 5767181019744597593
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_14"
+      rect:
+        serializedVersion: 2
+        x: 312
+        y: 153
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a81f238996ee66680800000000000000
+      internalID: -8762053887710269046
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_15"
+      rect:
+        serializedVersion: 2
+        x: 958
+        y: 155
+        width: 14
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: acbb393a9edb0c390800000000000000
+      internalID: -7800025743436301366
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_16"
+      rect:
+        serializedVersion: 2
+        x: 474
+        y: 89
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 15f16544e3e124610800000000000000
+      internalID: 1603877670080618321
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_17"
+      rect:
+        serializedVersion: 2
+        x: 1350
+        y: 98
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b4aa7177fe1326620800000000000000
+      internalID: 2765828025723890251
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_18"
+      rect:
+        serializedVersion: 2
+        x: 1356
+        y: 99
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ef62ccb86a4b62ba0800000000000000
+      internalID: -6114000816705886466
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_19"
+      rect:
+        serializedVersion: 2
+        x: 474
+        y: 80
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 77f8cefa0776a9db0800000000000000
+      internalID: -4784397920442216585
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_20"
+      rect:
+        serializedVersion: 2
+        x: 829
+        y: 83
+        width: 12
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 629da9300a69b8f20800000000000000
+      internalID: 3425997555544807718
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_21"
+      rect:
+        serializedVersion: 2
+        x: 843
+        y: 83
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 69d7f8cd776b3a030800000000000000
+      internalID: 3504845560942132630
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_22"
+      rect:
+        serializedVersion: 2
+        x: 846
+        y: 82
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 432908a2254d49090800000000000000
+      internalID: -8028558786329275852
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_23"
+      rect:
+        serializedVersion: 2
+        x: 970
+        y: 88
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d3ce4e5bd38af2400800000000000000
+      internalID: 301644683055262781
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_24"
+      rect:
+        serializedVersion: 2
+        x: 992
+        y: 80
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5f0fcc83d7196dc70800000000000000
+      internalID: 8995537272729039093
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_25"
+      rect:
+        serializedVersion: 2
+        x: 1087
+        y: 80
+        width: 10
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aa6cdb4d30472fbb0800000000000000
+      internalID: -4903729484450117974
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_26"
+      rect:
+        serializedVersion: 2
+        x: 1114
+        y: 79
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4ced7b08c8856c610800000000000000
+      internalID: 1641096474701323972
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_27"
+      rect:
+        serializedVersion: 2
+        x: 489
+        y: 73
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 501d865ea3f2fc460800000000000000
+      internalID: 7264076653975359749
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_28"
+      rect:
+        serializedVersion: 2
+        x: 994
+        y: 74
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5fc5df0e1b23de3f0800000000000000
+      internalID: -869983413447336715
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_0": 4878821078014831891
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_1": -5134226986286649822
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_10": -4127678544546148069
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_11": -8004015557453110755
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_12": -8806598652182864812
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_13": 5767181019744597593
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_14": -8762053887710269046
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_15": -7800025743436301366
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_16": 1603877670080618321
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_17": 2765828025723890251
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_18": -6114000816705886466
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_19": -4784397920442216585
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_2": 2862223991090966140
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_20": 3425997555544807718
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_21": 3504845560942132630
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_22": -8028558786329275852
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_23": 301644683055262781
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_24": 8995537272729039093
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_25": -4903729484450117974
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_26": 1641096474701323972
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_27": 7264076653975359749
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_28": -869983413447336715
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_3": 3867304127351490580
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_4": 1474129151542193073
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_5": -3914531016449834997
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_6": 5070353511754439179
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_7": -3695823598638266946
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_8": 5969406794014837899
+      "Pi\u0119\u0107 p\u0142omieni na przezroczystym tle_9": 6535793792802607430
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

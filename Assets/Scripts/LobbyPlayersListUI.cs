@@ -1,0 +1,80 @@
+using System.Collections.Generic;
+using Photon.Pun;
+using Photon.Realtime;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class LobbyPlayersListUI : MonoBehaviourPunCallbacks
+{
+    [Header("UI")]
+    [SerializeField] private Transform container;            // PlayersListContainer
+    [SerializeField] private GameObject rowPrefab;           // prefab PlayerRow
+    [SerializeField] private TMP_Text playersCountText;      // PlayerCountText (Gracze: x/6)
+
+    [Header("Avatars")]
+    [SerializeField] private AvatarDatabase avatarDatabase;  // wspólny asset
+
+    private const string AvatarKey = "avatarIndex";
+    private readonly List<GameObject> spawned = new();
+
+    private void Start() => Refresh();
+
+    public override void OnJoinedRoom() => Refresh();
+    public override void OnPlayerEnteredRoom(Player newPlayer) => Refresh();
+    public override void OnPlayerLeftRoom(Player otherPlayer) => Refresh();
+    public override void OnPlayerPropertiesUpdate(Player targetPlayer, ExitGames.Client.Photon.Hashtable changedProps) => Refresh();
+
+    private void Refresh()
+    {
+        if (container == null || rowPrefab == null) return;
+
+        if (!PhotonNetwork.InRoom)
+        {
+            if (playersCountText != null) playersCountText.text = "Gracze: -/-";
+            ClearRows();
+            return;
+        }
+
+        if (playersCountText != null && PhotonNetwork.CurrentRoom != null)
+        {
+            int count = PhotonNetwork.CurrentRoom.PlayerCount;
+            int max = PhotonNetwork.CurrentRoom.MaxPlayers;
+            playersCountText.text = $"Gracze: {count}/{max}";
+        }
+
+        ClearRows();
+
+        int iRow = 1;
+        foreach (var p in PhotonNetwork.PlayerList)
+        {
+            var go = Instantiate(rowPrefab, container);
+            spawned.Add(go);
+
+            var nameText = go.transform.Find("NameText")?.GetComponent<TMP_Text>();
+            var avatarImg = go.transform.Find("AvatarImage")?.GetComponent<Image>();
+
+            if (nameText != null)
+                nameText.text = $"{iRow}. {p.NickName}";
+
+            int idx = 0;
+            if (p.CustomProperties != null && p.CustomProperties.ContainsKey(AvatarKey))
+                idx = (int)p.CustomProperties[AvatarKey];
+
+            if (avatarImg != null && avatarDatabase != null && avatarDatabase.avatars != null && avatarDatabase.avatars.Length > 0)
+            {
+                idx = Mathf.Clamp(idx, 0, avatarDatabase.avatars.Length - 1);
+                avatarImg.sprite = avatarDatabase.avatars[idx];
+            }
+
+            iRow++;
+        }
+    }
+
+    private void ClearRows()
+    {
+        for (int i = 0; i < spawned.Count; i++)
+            if (spawned[i] != null) Destroy(spawned[i]);
+        spawned.Clear();
+    }
+}
