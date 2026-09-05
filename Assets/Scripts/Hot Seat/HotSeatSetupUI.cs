@@ -306,6 +306,7 @@ public class HotSeatSetupUI : MonoBehaviour
 
     private void StartNewRound(int requestedStarterIndex = -1)
     {
+        CasinoAudio.BeginLocalGame();
         roundNumber++;
         DealCards();
 

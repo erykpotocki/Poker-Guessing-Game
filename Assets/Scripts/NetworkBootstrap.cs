@@ -99,6 +99,16 @@ public class NetworkBootstrap : MonoBehaviourPunCallbacks
             RequestRoomRecovery();
     }
 
+    public override void OnLeftRoom()
+    {
+        // Explicit leave (including a host kick) must cancel background recovery.
+        StopAllCoroutines();
+        shouldRecoverRoom = rejoinAfterMasterConnection = recoveryRunning = false;
+        PlayerPrefs.SetInt(ResumePendingPrefsKey, 0);
+        PlayerPrefs.DeleteKey(LastRoomCodePrefsKey);
+        PlayerPrefs.Save();
+    }
+
     private void OnApplicationFocus(bool focused)
     {
         if (focused && (shouldRecoverRoom ||

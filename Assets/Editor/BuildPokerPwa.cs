@@ -20,6 +20,7 @@ public static class BuildPokerPwa
         ValidatePhotonConfiguration();
 
         PlayerSettings.productName = "Poker zgadywany";
+        PlayerSettings.bundleVersion = "1.3.0";
         PlayerSettings.WebGL.template = "PROJECT:PokerPWA";
         PlayerSettings.WebGL.dataCaching = true;
         PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Brotli;

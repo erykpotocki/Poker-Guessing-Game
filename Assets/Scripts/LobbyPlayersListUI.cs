@@ -21,6 +21,22 @@ public class LobbyPlayersListUI : MonoBehaviourPunCallbacks
     private readonly Dictionary<int, GameObject> rowsByActorNumber = new();
     private float currentRowHeight = 108f;
     private float currentAvatarSize = 88f;
+    private bool previousCloseConnectionSetting;
+
+    public override void OnEnable()
+    {
+        base.OnEnable();
+        previousCloseConnectionSetting = PhotonNetwork.EnableCloseConnection;
+        PhotonNetwork.EnableCloseConnection = true;
+    }
+
+    public override void OnDisable()
+    {
+        PhotonNetwork.EnableCloseConnection = previousCloseConnectionSetting;
+        base.OnDisable();
+    }
+
+    public override void OnMasterClientSwitched(Player newMasterClient) => Refresh();
 
     public int AvatarCount => avatarDatabase != null && avatarDatabase.avatars != null
         ? avatarDatabase.avatars.Length
@@ -192,6 +208,87 @@ public class LobbyPlayersListUI : MonoBehaviourPunCallbacks
             horizontal.childForceExpandWidth = false;
             horizontal.childForceExpandHeight = false;
         }
+
+        // The action column sits outside the original name/avatar layout.
+        // Reserve it even for the host, whose own row has no remove action.
+        GameObject actionSlot = new GameObject("RemoveActionColumn", typeof(RectTransform), typeof(LayoutElement));
+        RectTransform actionRect = actionSlot.GetComponent<RectTransform>();
+        actionRect.SetParent(go.transform, false);
+        actionSlot.GetComponent<LayoutElement>().ignoreLayout = true;
+        actionRect.anchorMin = actionRect.anchorMax = new Vector2(1f, 0.5f);
+        actionRect.pivot = new Vector2(0f, 0.5f);
+        // The row has 20 units of right padding: 4 outside gives a 24-unit gap.
+        actionRect.anchoredPosition = new Vector2(4f, 0f);
+        actionRect.sizeDelta = new Vector2(58f, 58f);
+
+        if (PhotonNetwork.IsMasterClient && actorNumber != PhotonNetwork.LocalPlayer.ActorNumber)
+            CreateRemoveButton(actionRect, actorNumber);
+    }
+
+    private void CreateRemoveButton(Transform row, int actorNumber)
+    {
+        GameObject control = new GameObject("RemovePlayer", typeof(RectTransform),
+            typeof(Image), typeof(Button), typeof(LayoutElement));
+        control.transform.SetParent(row, false);
+        control.transform.SetAsLastSibling();
+        RectTransform controlRect = control.GetComponent<RectTransform>();
+        controlRect.anchorMin = Vector2.zero;
+        controlRect.anchorMax = Vector2.one;
+        controlRect.offsetMin = controlRect.offsetMax = Vector2.zero;
+        LayoutElement layout = control.GetComponent<LayoutElement>();
+        layout.minWidth = layout.preferredWidth = 58f;
+        layout.minHeight = layout.preferredHeight = 58f;
+        layout.flexibleWidth = layout.flexibleHeight = 0f;
+        Image border = control.GetComponent<Image>();
+        border.color = new Color(0.78f, 0.56f, 0.20f);
+        GameObject fill = new GameObject("Fill", typeof(RectTransform), typeof(Image));
+        RectTransform fillRect = fill.GetComponent<RectTransform>();
+        fillRect.SetParent(control.transform, false);
+        fillRect.anchorMin = Vector2.zero;
+        fillRect.anchorMax = Vector2.one;
+        fillRect.offsetMin = Vector2.one * 2f;
+        fillRect.offsetMax = Vector2.one * -2f;
+        fill.GetComponent<Image>().color = new Color(0.28f, 0.045f, 0.025f);
+        fill.GetComponent<Image>().raycastTarget = false;
+        GameObject textObject = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+        TMP_Text text = textObject.GetComponent<TMP_Text>();
+        text.transform.SetParent(control.transform, false);
+        text.rectTransform.anchorMin = Vector2.zero;
+        text.rectTransform.anchorMax = Vector2.one;
+        text.rectTransform.offsetMin = text.rectTransform.offsetMax = Vector2.zero;
+        text.text = "×";
+        text.fontSize = 42f;
+        text.alignment = TextAlignmentOptions.Center;
+        text.color = new Color(1f, 0.88f, 0.60f);
+        text.raycastTarget = false;
+        Button button = control.GetComponent<Button>();
+        button.targetGraphic = border;
+        Navigation navigation = button.navigation;
+        navigation.mode = Navigation.Mode.None;
+        button.navigation = navigation;
+        button.onClick.AddListener(() => RemoveParticipant(actorNumber));
+        // An absent client cannot receive a kick until it reconnects.
+        if (PhotonNetwork.CurrentRoom.Players.TryGetValue(actorNumber, out Player player))
+            button.interactable = !player.IsInactive;
+    }
+
+    private void RemoveParticipant(int actorNumber)
+    {
+        if (!PhotonNetwork.InRoom || !PhotonNetwork.IsMasterClient ||
+            actorNumber == PhotonNetwork.LocalPlayer.ActorNumber ||
+            (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("gameStarted", out object started)
+             && started is bool value && value))
+            return;
+
+        if (LobbyBotRegistry.IsBot(actorNumber))
+        {
+            FindFirstObjectByType<FakePlayers>()?.RemoveBot(actorNumber);
+            return;
+        }
+
+        if (PhotonNetwork.CurrentRoom.Players.TryGetValue(actorNumber, out Player target)
+            && !target.IsInactive)
+            PhotonNetwork.CloseConnection(target);
     }
 
     private void ConfigureModernListLayout(int participantCount)

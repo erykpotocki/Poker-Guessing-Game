@@ -24,6 +24,18 @@ public class TableSeatSpawner : MonoBehaviour
     private const string AvatarKey = "avatarIndex";
     private const string SeatOrderKey = "seatOrderV1";
     private const string GameSeedKey = "gameSeedV1";
+    private const string DealerAvatarKey = "dealerAvatarV1";
+    private Sprite[] dealerAvatars;
+
+    private void Awake()
+    {
+        dealerAvatars = Resources.LoadAll<Sprite>("DealerAvatars");
+        System.Array.Sort(dealerAvatars, (a, b) => string.CompareOrdinal(a.name, b.name));
+        if (tableCenter == null) return;
+        MultiplayerTableLayout layout = gameObject.AddComponent<MultiplayerTableLayout>();
+        RectTransform presentation = layout.Initialize(tableCenter);
+        if (cardDealTest != null) cardDealTest.SetPresentationParent(presentation);
+    }
 
     private void Start()
     {
@@ -172,6 +184,17 @@ public class TableSeatSpawner : MonoBehaviour
             { GameSeedKey, sharedGameSeed }
         };
 
+        if (dealerAvatars.Length > 0)
+        {
+            int previous = PlayerPrefs.GetInt("lastDealerAvatar", -1);
+            int selected = previous < 0 || previous >= dealerAvatars.Length ? UnityEngine.Random.Range(0, dealerAvatars.Length) :
+                (previous + UnityEngine.Random.Range(1, Mathf.Max(2, dealerAvatars.Length))) % dealerAvatars.Length;
+            props[DealerAvatarKey] = selected;
+            PlayerPrefs.SetInt("lastDealerAvatar", selected);
+            PlayerPrefs.Save();
+        }
+
+        // Publish together so every client sees the same dealer before spawning seats.
         PhotonNetwork.CurrentRoom.SetCustomProperties(props);
 
         Debug.Log("TableSeatSpawner: shared seat order = " + string.Join(" -> ", actorNumbers) + " | seed = " + sharedGameSeed);
@@ -382,6 +405,13 @@ public class TableSeatSpawner : MonoBehaviour
             }
 
             view.Set("Krupier", dealerAvatar);
+            if (dealerAvatars != null && dealerAvatars.Length > 0)
+            {
+                int index = 0;
+                if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(DealerAvatarKey, out object raw) && raw is int saved) index = saved;
+                view.Set("Krupier", dealerAvatars[Mathf.Abs(index) % dealerAvatars.Length]);
+            }
+            view.ConfigureDealerCaption();
         }
     }
 }

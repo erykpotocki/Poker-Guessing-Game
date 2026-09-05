@@ -70,6 +70,9 @@ public class CardDealTest : MonoBehaviour
     private readonly Dictionary<int, List<DealtCardView>> dealtViewsByPlayerId = new Dictionary<int, List<DealtCardView>>();
     private readonly List<CardSpriteEntry> allDealtCardsThisRound = new List<CardSpriteEntry>();
     private readonly List<DealtCardView> allDealtViewsThisRound = new List<DealtCardView>();
+    public bool HasFinishedDealing { get; private set; }
+    public bool HasSeats => seatOccupants.Count > 0;
+    public void SetPresentationParent(RectTransform parent) => cardsParent = parent;
 
     private class PlayerDealInfo
     {
@@ -191,6 +194,7 @@ public class CardDealTest : MonoBehaviour
 
     public void ClearDealtCardMemory()
     {
+        HasFinishedDealing = false;
         dealtCardsByPlayerId.Clear();
         dealtViewsByPlayerId.Clear();
         allDealtCardsThisRound.Clear();
@@ -232,6 +236,25 @@ public class CardDealTest : MonoBehaviour
         }
 
         return GetAllDealtCards();
+    }
+
+    public Dictionary<int, List<CardSpriteEntry>> GetRoundCardsByPlayerForHistory()
+    {
+        if (PhotonNetwork.CurrentRoom != null &&
+            PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(RoundCardsSnapshotKey, out object raw) && raw is string snapshot)
+            return DeserializeRoundSnapshot(snapshot);
+        return new Dictionary<int, List<CardSpriteEntry>>(dealtCardsByPlayerId);
+    }
+
+    public void HighlightMatchingCards(List<CardSpriteEntry> matches, bool complete)
+    {
+        Color color = complete ? new Color(0.25f, 1f, 0.45f) : new Color(1f, 0.78f, 0.2f);
+        for (int i = 0; i < allDealtViewsThisRound.Count && i < allDealtCardsThisRound.Count; i++)
+        {
+            CardSpriteEntry card = allDealtCardsThisRound[i];
+            bool matching = card != null && matches.Exists(item => item.rank == card.rank && item.suit == card.suit);
+            if (allDealtViewsThisRound[i] != null) allDealtViewsThisRound[i].SetReviewHighlight(matching, color);
+        }
     }
 
     public void RevealAllDealtCards()
@@ -367,6 +390,10 @@ public class CardDealTest : MonoBehaviour
         if (allDealtCardsThisRound.Count > 0)
             return true;
 
+        if (TryReadIntProp("roundCardsNumberV1", out int snapshotRound) &&
+            TryReadIntProp("turnRoundNumberV1", out int turnRound) && snapshotRound != turnRound)
+            return false;
+
         if (!PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(RoundCardsSnapshotKey, out object rawSnapshot))
             return false;
 
@@ -440,6 +467,7 @@ public class CardDealTest : MonoBehaviour
 
         hasStarted = true;
         useConfiguredRoundData = false;
+        HasFinishedDealing = true;
         return true;
     }
 
@@ -587,6 +615,7 @@ public class CardDealTest : MonoBehaviour
 
     private void NotifyTurnManagerCardsReady()
     {
+        HasFinishedDealing = true;
         if (turnManager == null)
             return;
 
@@ -613,7 +642,8 @@ public class CardDealTest : MonoBehaviour
             { RoundCardsSnapshotKey, snapshot },
             { RoundStarterKey, runtimeStarterPlayerId },
             { RoundDealerKey, runtimeDealerPlayerId },
-            { RoundSeedKey, sharedRoundSeed }
+            { RoundSeedKey, sharedRoundSeed },
+            { "roundCardsNumberV1", turnManager != null ? turnManager.CurrentRoundNumber : 1 }
         };
 
         PhotonNetwork.CurrentRoom.SetCustomProperties(props);

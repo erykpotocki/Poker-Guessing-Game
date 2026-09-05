@@ -37,11 +37,6 @@ public class MainMenuUI : MonoBehaviour
         "1 → 2 → 3 → 2 → 1, a następna porażka oznacza odpadnięcie.\n\n" +
         "<b>PAMIĘTAJ</b>\nW każdej rundzie musisz przebić poprzednią deklarację albo ją sprawdzić.";
 
-    private const string SettingsText =
-        "<b>DŹWIĘK I MUZYKA</b>\nPrzełącznik muzyki oraz efektów dźwiękowych pojawi się tutaj wkrótce.\n\n" +
-        "<b>JĘZYK</b>\nGra korzysta obecnie z języka polskiego. W przyszłości dodamy wybór języka.\n\n" +
-        "<b>WIĘCEJ OPCJI</b>\nTo miejsce jest przygotowane na kolejne ustawienia gry.";
-
     private void Awake()
     {
         PokerButtonTheme.EnsureController();
@@ -403,7 +398,9 @@ public class MainMenuUI : MonoBehaviour
 
     private void ShowSettings()
     {
-        ShowInfo("USTAWIENIA", "W PRZYGOTOWANIU", SettingsText);
+        Canvas canvas = GetComponentInParent<Canvas>();
+        if (canvas == null && menuGroup != null) canvas = menuGroup.GetComponentInParent<Canvas>();
+        if (canvas != null) GameUtilityBar.ShowSettings(canvas);
     }
 
     private void ShowInfo(string title, string badge, string body)

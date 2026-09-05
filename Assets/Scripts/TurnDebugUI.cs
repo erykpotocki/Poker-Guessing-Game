@@ -24,6 +24,45 @@ public class TurnDebugUI : MonoBehaviour
     [SerializeField] private float overtimePulseScaleAmount = 0.15f;
 
     private Vector3 timerBaseScale = Vector3.one;
+    private RectTransform toolbarStatus;
+
+    public void AttachToToolbar(RectTransform parent)
+    {
+        toolbarStatus = parent;
+        if (turnTimerText != null) turnTimerText.transform.SetParent(parent, false);
+        if (turnText != null) turnText.transform.SetParent(parent, false);
+        normalTimerColor = new Color(0.85f, 0.81f, 0.7f);
+        if (turnText != null) turnText.color = normalTimerColor;
+        LayoutStatusLabels();
+    }
+
+    public void LayoutStatusLabels()
+    {
+        if (turnTimerText == null || turnText == null || toolbarStatus == null) return;
+        float width = toolbarStatus.rect.width;
+        float timerWidth = Mathf.Min(230f, width * 0.32f);
+        float timerLeft = Mathf.Min(90f, width * 0.08f);
+        ConfigureStatusLabel(turnTimerText, timerLeft, 6f, timerWidth);
+        float turnLeft = Mathf.Max(timerLeft + timerWidth + 32f, width * 0.34f);
+        ConfigureStatusLabel(turnText, turnLeft, 6f, Mathf.Max(1f, width - turnLeft));
+        turnText.alignment = TextAlignmentOptions.Center;
+    }
+
+    private static void ConfigureStatusLabel(TMP_Text label, float x, float y, float width)
+    {
+        RectTransform rect = label.rectTransform;
+        rect.anchorMin = rect.anchorMax = Vector2.zero;
+        rect.pivot = Vector2.zero;
+        rect.anchoredPosition = new Vector2(x, y);
+        rect.sizeDelta = new Vector2(width, 56f);
+        label.textWrappingMode = TextWrappingModes.NoWrap;
+        label.enableAutoSizing = true;
+        label.fontSizeMin = 24f;
+        label.fontSizeMax = 30f;
+        label.alignment = TextAlignmentOptions.MidlineLeft;
+        label.margin = Vector4.zero;
+        label.overflowMode = TextOverflowModes.Ellipsis;
+    }
 
     private void OnEnable()
     {
@@ -39,6 +78,7 @@ public class TurnDebugUI : MonoBehaviour
 
     private void Start()
     {
+        LayoutStatusLabels();
         if (turnTimerText != null)
         {
             timerBaseScale = turnTimerText.rectTransform.localScale;
@@ -54,7 +94,7 @@ public class TurnDebugUI : MonoBehaviour
         if (turnManager == null || !turnManager.IsInitialized)
             return;
 
-        UpdateTimerVisuals();
+        UpdateText(turnManager.CurrentPlayerActorNumber);
     }
 
     public void RefreshNow()
@@ -64,11 +104,11 @@ public class TurnDebugUI : MonoBehaviour
 
         if (turnManager == null || !turnManager.IsInitialized)
         {
-            turnText.text = "Tura: ---";
+            turnText.text = string.Empty;
 
             if (turnTimerText != null)
             {
-                turnTimerText.text = "Czas: ---";
+                turnTimerText.text = string.Empty;
                 turnTimerText.color = normalTimerColor;
                 turnTimerText.rectTransform.localScale = timerBaseScale;
             }
@@ -94,6 +134,13 @@ public class TurnDebugUI : MonoBehaviour
     {
         if (turnText == null)
             return;
+
+        if (turnManager != null && turnManager.IsResolutionLocked)
+        {
+            turnText.text = turnManager.IsAwaitingRoundReady ? "Czekamy na gotowość" : "";
+            UpdateTimerVisuals();
+            return;
+        }
 
         if (actorNumber <= 0)
         {
@@ -143,7 +190,7 @@ public class TurnDebugUI : MonoBehaviour
 
         if (turnManager == null || !turnManager.IsInitialized)
         {
-            turnTimerText.text = "Czas: ---";
+            turnTimerText.text = string.Empty;
             turnTimerText.color = normalTimerColor;
             turnTimerText.rectTransform.localScale = timerBaseScale;
             return;
@@ -159,6 +206,9 @@ public class TurnDebugUI : MonoBehaviour
 
         if (turnManager.IsResolutionLocked)
         {
+            turnTimerText.text = turnManager.IsDealingCards ? string.Empty : "Czas: pauza";
+            turnTimerText.color = normalTimerColor;
+            turnTimerText.rectTransform.localScale = timerBaseScale;
             return;
         }
 

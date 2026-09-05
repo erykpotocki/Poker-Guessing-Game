@@ -30,6 +30,45 @@ public class SeatUIView : MonoBehaviour
     private Image circularAvatarContent;
     private static Sprite circleMaskSprite;
     private static Sprite circleRingSprite;
+    private GameObject readyIndicator;
+
+    public void SetReadyIndicator(bool ready)
+    {
+        if (readyIndicator == null && ready && avatarImage != null)
+        {
+            EnsureCircleSprites();
+            readyIndicator = new GameObject("ReadyIndicator", typeof(RectTransform), typeof(Image));
+            RectTransform rect = readyIndicator.GetComponent<RectTransform>();
+            rect.SetParent(avatarImage.transform.parent, false);
+            rect.anchorMin = avatarImage.rectTransform.anchorMin;
+            rect.anchorMax = avatarImage.rectTransform.anchorMax;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = avatarImage.rectTransform.rect.size + Vector2.one * 10f;
+            Image ring = readyIndicator.GetComponent<Image>();
+            ring.sprite = circleRingSprite;
+            ring.color = new Color(0.20f, 0.78f, 0.38f);
+            ring.raycastTarget = false;
+        }
+        if (readyIndicator != null) readyIndicator.SetActive(ready);
+    }
+
+    private void LateUpdate()
+    {
+        if (readyIndicator != null && readyIndicator.activeSelf && avatarImage != null)
+            readyIndicator.transform.position = avatarImage.rectTransform.TransformPoint(avatarImage.rectTransform.rect.center);
+        if (avatarImage == null) return;
+        Vector3 center = avatarImage.rectTransform.TransformPoint(avatarImage.rectTransform.rect.center);
+        if (activeTurnHighlight != null) activeTurnHighlight.position = center;
+        if (nickText != null)
+        {
+            nickText.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+            nickText.rectTransform.position = avatarImage.rectTransform.TransformPoint(
+                avatarImage.rectTransform.rect.center + new Vector2(0f, -90f));
+            nickText.rectTransform.sizeDelta = new Vector2(230f, 40f);
+            nickText.alignment = TextAlignmentOptions.Center;
+            nickText.transform.SetAsLastSibling();
+        }
+    }
 
     private void Awake()
     {
@@ -70,6 +109,24 @@ public class SeatUIView : MonoBehaviour
     }
 
     public void SetActiveTurnHighlight(bool isActive)
+    {
+        SetTurnHighlight(isActive);
+    }
+
+    public void ConfigureDealerCaption()
+    {
+        if (nickText == null || avatarImage == null) return;
+        RectTransform caption = nickText.rectTransform;
+        caption.anchorMin = caption.anchorMax = new Vector2(0.5f, 0.5f);
+        caption.anchoredPosition = avatarImage.rectTransform.anchoredPosition + new Vector2(0f, -90f);
+        caption.sizeDelta = new Vector2(210f, 40f);
+        nickText.fontSize = 27f;
+        nickText.enableAutoSizing = false;
+        nickText.alignment = TextAlignmentOptions.Center;
+        nickText.color = new Color(1f, 0.91f, 0.7f);
+    }
+
+    private void SetTurnHighlight(bool isActive)
     {
         if (isEliminated)
             isActive = false;
@@ -199,7 +256,9 @@ public class SeatUIView : MonoBehaviour
             return;
 
         EnsureCircleSprites();
-        activeTurnHighlight.sizeDelta = new Vector2(146f, 146f);
+        activeTurnHighlight.sizeDelta = new Vector2(132f, 132f);
+        activeTurnHighlight.pivot = new Vector2(0.5f, 0.5f);
+        activeTurnHighlight.SetAsFirstSibling();
         activeTurnHighlight.anchoredPosition = new Vector2(0f, 9f);
 
         Image highlightImage = activeTurnHighlight.GetComponent<Image>();
@@ -229,7 +288,7 @@ public class SeatUIView : MonoBehaviour
         Color[] ringPixels = new Color[size * size];
         Vector2 center = new Vector2((size - 1) * 0.5f, (size - 1) * 0.5f);
         float outerRadius = size * 0.49f;
-        float innerRadius = size * 0.41f;
+        float innerRadius = size * 0.455f;
 
         for (int y = 0; y < size; y++)
         {

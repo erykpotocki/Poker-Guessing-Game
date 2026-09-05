@@ -39,10 +39,29 @@ public class HotSeatHandEvaluatorTests
             Assert.That(Evaluate(handId, matching), Is.True,
                 "Matching cards rejected for " + handId);
 
+            var highlighted = MultiplayerHandRules.MatchingCards(handId, matching, out bool complete);
+            Assert.That(complete, Is.True, "Multiplayer rejects " + handId);
+            Assert.That(highlighted.Count, Is.EqualTo(matching.Count), "Wrong highlight for " + handId);
+
             matching.RemoveAt(matching.Count - 1);
             Assert.That(Evaluate(handId, matching), Is.False,
                 "Incomplete cards accepted for " + handId);
+            MultiplayerHandRules.MatchingCards(handId, matching, out complete);
+            Assert.That(complete, Is.False, "Multiplayer accepts incomplete " + handId);
         }
+    }
+
+    [Test]
+    public void BeginnerBotNextBid_IsStrictlyHigher_ForEveryCatalogHand()
+    {
+        foreach (string id in HandRankCatalog.GetAllIds())
+        {
+            string next = MultiplayerHandRules.NextHigher(id);
+            if (id == "POKER_BIG_SPADE") Assert.That(next, Is.Null);
+            else Assert.That(HandRankCatalog.CanBeat(next, id), Is.True, id + " -> " + next);
+        }
+        Assert.That(MultiplayerHandRules.NextHigher("FLUSH_HEART"), Is.EqualTo("FLUSH_SPADE"));
+        Assert.That(MultiplayerHandRules.NextHigher("POKER_BIG_HEART"), Is.EqualTo("POKER_BIG_SPADE"));
     }
 
     private bool Evaluate(string handId, List<CardSpriteEntry> cards)

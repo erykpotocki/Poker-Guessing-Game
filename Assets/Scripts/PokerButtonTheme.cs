@@ -20,6 +20,8 @@ public sealed class PokerButtonTheme : MonoBehaviour
 
     private Sprite buttonSprite;
     private Texture2D buttonTexture;
+    private Sprite primarySprite;
+    private Texture2D primaryTexture;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void CreateThemeController()
@@ -92,6 +94,8 @@ public sealed class PokerButtonTheme : MonoBehaviour
 
         if (buttonTexture != null)
             Destroy(buttonTexture);
+        if (primarySprite != null) Destroy(primarySprite);
+        if (primaryTexture != null) Destroy(primaryTexture);
     }
 
     private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -107,6 +111,7 @@ public sealed class PokerButtonTheme : MonoBehaviour
 
     private void ApplyTheme(Button button)
     {
+        ButtonAudioFeedback.Ensure(button);
         if (button == null || IsExcludedFromTheme(button))
             return;
 
@@ -125,10 +130,13 @@ public sealed class PokerButtonTheme : MonoBehaviour
         if (Application.isPlaying)
             ConfigureMobileTouchTarget(button);
 
-        bool firstApplication = background.sprite != buttonSprite;
+        bool primary = button.gameObject.scene.name == "Game" && button.name == "CheckButton";
+        if (primary && primarySprite == null) primarySprite = CreateModernButtonSprite(true);
+        Sprite styleSprite = primary ? primarySprite : buttonSprite;
+        bool firstApplication = background.sprite != styleSprite;
         if (firstApplication)
         {
-            background.sprite = buttonSprite;
+            background.sprite = styleSprite;
             background.type = Image.Type.Sliced;
             background.preserveAspect = false;
             background.fillCenter = true;
@@ -147,6 +155,7 @@ public sealed class PokerButtonTheme : MonoBehaviour
             return;
 
         label.color = button.interactable ? LabelColor : DisabledLabelColor;
+        if (primary) label.color = button.interactable ? new Color(0.20f, 0.055f, 0.025f) : new Color(0.29f, 0.23f, 0.16f);
         bool usesCompactMainMenuFont =
             button.gameObject.scene.name == "MainMenu" &&
             !button.name.StartsWith("Info");
@@ -299,13 +308,13 @@ public sealed class PokerButtonTheme : MonoBehaviour
         return null;
     }
 
-    private Sprite CreateModernButtonSprite()
+    private Sprite CreateModernButtonSprite(bool primary = false)
     {
         const int size = 96;
         const float radius = 23f;
         const float border = 3.5f;
 
-        buttonTexture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+        Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
         {
             name = "PokerButtonModern",
             filterMode = FilterMode.Bilinear,
@@ -317,6 +326,13 @@ public sealed class PokerButtonTheme : MonoBehaviour
         Color bottomFill = new Color(0.17f, 0.018f, 0.018f, 1f);
         Color topBorder = new Color(1f, 0.80f, 0.34f, 1f);
         Color bottomBorder = new Color(0.62f, 0.34f, 0.07f, 1f);
+        if (primary)
+        {
+            topFill = new Color(1f, 0.83f, 0.39f);
+            bottomFill = new Color(0.68f, 0.39f, 0.10f);
+            topBorder = new Color(1f, 0.95f, 0.69f);
+            bottomBorder = new Color(0.90f, 0.61f, 0.23f);
+        }
 
         for (int y = 0; y < size; y++)
         {
@@ -338,14 +354,16 @@ public sealed class PokerButtonTheme : MonoBehaviour
                 pixel.g = Mathf.Clamp01(pixel.g + highlight * 0.75f);
                 pixel.b = Mathf.Clamp01(pixel.b + highlight * 0.35f);
 
-                buttonTexture.SetPixel(x, y, pixel);
+                texture.SetPixel(x, y, pixel);
             }
         }
 
-        buttonTexture.Apply(false, true);
+        texture.Apply(false, true);
+        if (primary) primaryTexture = texture;
+        else buttonTexture = texture;
 
         Sprite sprite = Sprite.Create(
-            buttonTexture,
+            texture,
             new Rect(0f, 0f, size, size),
             new Vector2(0.5f, 0.5f),
             100f,
@@ -380,6 +398,7 @@ public sealed class PokerButtonTheme : MonoBehaviour
     private static bool IsExcludedFromTheme(Button button)
     {
         string name = button.name.ToLowerInvariant();
+        if (name.StartsWith("utility")) return true;
 
         if (name.Contains("removeplayer") ||
             name.Contains("delete") ||

@@ -103,7 +103,8 @@ public class FakePlayers : MonoBehaviourPunCallbacks
         "BOT Kubix",
         "BOT Gardjew",
         "BOT Emil",
-        "BOT Sebek"
+        "BOT Sebek",
+        "BOT Kyre"
     };
 
     [Header("Legacy UI (kept for scene compatibility)")]
@@ -190,10 +191,13 @@ public class FakePlayers : MonoBehaviourPunCallbacks
         }
 
         string chosenName = freeNames[Random.Range(0, freeNames.Count)];
+        int nextActor = LobbyBotRegistry.FirstBotActorNumber;
+        while (bots.Exists(bot => bot.ActorNumber == nextActor))
+            nextActor++;
 
         bots.Add(new LobbyBotInfo
         {
-            ActorNumber = LobbyBotRegistry.FirstBotActorNumber + bots.Count,
+            ActorNumber = nextActor,
             Name = chosenName,
             AvatarIndex = 0
         });
@@ -208,6 +212,26 @@ public class FakePlayers : MonoBehaviourPunCallbacks
         PhotonNetwork.CurrentRoom.CustomProperties[LobbyBotRegistry.RoomPropertyKey] = serializedBots;
 
         RefreshUI();
+    }
+
+    public void RemoveBot(int actorNumber)
+    {
+        if (!PhotonNetwork.InRoom || !PhotonNetwork.IsMasterClient ||
+            (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("gameStarted", out object started)
+             && started is bool value && value))
+            return;
+
+        SyncBotsFromRoom();
+        if (bots.RemoveAll(bot => bot.ActorNumber == actorNumber) == 0)
+            return;
+
+        string serialized = LobbyBotRegistry.Serialize(bots);
+        if (PhotonNetwork.CurrentRoom.SetCustomProperties(new Hashtable
+            { { LobbyBotRegistry.RoomPropertyKey, serialized } }))
+        {
+            PhotonNetwork.CurrentRoom.CustomProperties[LobbyBotRegistry.RoomPropertyKey] = serialized;
+            RefreshUI();
+        }
     }
 
     private void SyncBotsFromRoom()

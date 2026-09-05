@@ -91,21 +91,32 @@ public class HandRankPanelUI : MonoBehaviour
             handRankTitle.gameObject.SetActive(false);
         }
 
-        Button topBackButton = GetButton(categoryList, "BackButton");
-        if (topBackButton != null && topBackButton.transform is RectTransform backRect)
-        {
-            backRect.anchoredPosition += Vector2.left * 34f;
-            PokerButtonTheme.ApplyTo(topBackButton);
-        }
-
         if (checkButton != null && checkButton.transform is RectTransform checkRect)
         {
-            checkRect.offsetMin += new Vector2(18f, 14f);
-            checkRect.offsetMax += new Vector2(-30f, -12f);
+            // This button used to lay out a separate visual child. That layout
+            // must not drive the label now that the button itself is the visual.
+            foreach (LayoutGroup layout in checkButton.GetComponents<LayoutGroup>())
+                layout.enabled = false;
+            Image background = checkButton.GetComponent<Image>();
+            if (background == null) background = checkButton.gameObject.AddComponent<Image>();
+            checkButton.targetGraphic = background;
+            if (checkButtonVisual != null) checkButtonVisual.enabled = false;
+            if (checkButtonText != null)
+            {
+                checkButtonText.transform.SetParent(checkRect, false);
+                ContentSizeFitter fitter = checkButtonText.GetComponent<ContentSizeFitter>();
+                if (fitter != null) fitter.enabled = false;
+                LayoutElement labelLayout = checkButtonText.GetComponent<LayoutElement>();
+                if (labelLayout != null) labelLayout.ignoreLayout = true;
+                checkButtonText.rectTransform.anchorMin = Vector2.zero;
+                checkButtonText.rectTransform.anchorMax = Vector2.one;
+                checkButtonText.rectTransform.offsetMin = new Vector2(16f, 8f);
+                checkButtonText.rectTransform.offsetMax = new Vector2(-16f, -8f);
+                checkButtonText.alignment = TextAlignmentOptions.Center;
+            }
             PokerButtonTheme.ApplyTo(checkButton);
-            if (checkButtonVisual != null)
-                checkButtonVisual.color = Color.white;
         }
+        if (GetComponent<MultiplayerPanelLayout>() == null) gameObject.AddComponent<MultiplayerPanelLayout>();
     }
 
     private void ResolveReferences()
@@ -913,23 +924,13 @@ public class HandRankPanelUI : MonoBehaviour
 
     private void RefreshCheckButtonVisual()
     {
-        if (checkButtonVisual == null)
-            return;
-
-        if (string.IsNullOrEmpty(selectedRankText))
-        {
-            checkButtonVisual.color = cachedCheckButtonVisualColor;
-            return;
-        }
-
-        checkButtonVisual.color = raiseButtonColor;
-        
+        if (checkButtonVisual != null) checkButtonVisual.enabled = false;
     }
 
     private void RefreshCheckButtonState()
     {
         if (checkButtonText != null)
-            checkButtonText.text = string.IsNullOrEmpty(selectedRankText) ? "Sprawdzam" : "Przebij";
+            checkButtonText.text = string.IsNullOrEmpty(selectedRankText) ? "SPRAWDZAM" : "PODBIJ";
 
         RefreshCheckButtonVisual();
 

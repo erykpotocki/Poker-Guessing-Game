@@ -1,10 +1,10 @@
 {
-  "version": "1.2.3",
+  "version": "1.3.0",
   "title": "Dostępna aktualizacja",
   "changes": [
-    "Usunięto miganie przycisków i niebieski błysk podczas przechodzenia do gry offline.",
-    "Powiększono przycisk cofania w lewym górnym rogu.",
-    "Wyśrodkowano menu i dopasowano grę do pełnej wysokości ekranu.",
-    "Poprawiono edycję nazw oraz automatyczne przewijanie listy graczy nad klawiaturę."
+    "Dodano muzykę menu i rozgrywki oraz wspólne ustawienia dźwięku.",
+    "Nowe losowane avatary krupiera, poprawiony pasek gry i oznaczenia graczy.",
+    "Historia rund pokazuje właścicieli kart i pozostaje nad animacją rozdawania.",
+    "Poprawiono ruchy botów, gotowość do kolejnej rundy oraz listę graczy w pokoju."
   ]
 }

@@ -30,3 +30,4 @@ Assets/Photon/PhotonUnityNetworking/Resources/PhotonServerSettings.asset
 .vscode/
 .DS_Store
 Thumbs.db
+Assets/Photon/PhotonRealtime/Resources/PhotonServerSettings.asset
