@@ -32,6 +32,9 @@ public class MobileInputFieldUX : MonoBehaviour
             field.contentType = TMP_InputField.ContentType.Custom;
             field.inputType = TMP_InputField.InputType.Standard;
             field.richText = false;
+            field.onFocusSelectAll = false;
+            field.resetOnDeActivation = false;
+            field.shouldHideSoftKeyboard = false;
         }
 
         BuildSharedLiftGroup();
@@ -136,9 +139,8 @@ public class MobileInputFieldUX : MonoBehaviour
     private float CalculateKeyboardLift(TMP_InputField focusedField)
     {
         Rect keyboardArea = TouchScreenKeyboard.area;
-        float keyboardTop = keyboardArea.height > 1f
-            ? keyboardArea.yMax
-            : Screen.height * 0.46f;
+        float keyboardTop = Mathf.Max(keyboardArea.yMax, HotSeatOrientationLock.KeyboardFraction * Screen.height);
+        if (keyboardTop <= 1f) return 0f;
 
         RectTransform fieldRect = focusedField.transform as RectTransform;
         if (fieldRect == null)

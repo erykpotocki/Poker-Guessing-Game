@@ -33,6 +33,17 @@ public class GameLoadSync : MonoBehaviourPunCallbacks
         StartCoroutine(WaitForRoomAndStartHandshake());
     }
 
+    private void Update()
+    {
+        if (loadingFinished || loadingUI == null) return;
+        Player[] players = PhotonNetwork.PlayerList;
+        int loaded = 0;
+        foreach (Player player in players)
+            if (player.CustomProperties.TryGetValue(PlayerLoadedKey, out object value) && value is bool ready && ready) loaded++;
+        float fraction = players.Length > 0 ? (float)loaded / players.Length : 0f;
+        loadingUI.SetProgress(.95f * fraction, fraction < 1f ? "Oczekiwanie na graczy…" : "Przygotowywanie stołu…");
+    }
+
     private IEnumerator WaitForRoomAndStartHandshake()
     {
         float timer = 0f;

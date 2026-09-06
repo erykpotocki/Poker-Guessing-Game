@@ -2,6 +2,7 @@ const CACHE_NAME = 'poker-zgadywany-__CACHE_VERSION__';
 const SHELL = [
   './',
   './index.html',
+  './mobile.js',
   './manifest.webmanifest?v=6',
   './icon-180.png?v=6',
   './icon-192.png?v=6',

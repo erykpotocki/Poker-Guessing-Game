@@ -14,6 +14,13 @@ public class GameLoadingUI : MonoBehaviour
     private bool showing;
     private float elapsed;
     private static int lastArtwork = -1;
+    private float targetProgress, displayedProgress;
+    private string stage = "Przygotowywanie stołu…";
+    public void SetProgress(float progress, string message)
+    {
+        targetProgress = Mathf.Max(targetProgress, Mathf.Clamp(progress, 0f, .99f));
+        stage = message;
+    }
 
     private void Start() => ShowLoading();
 
@@ -42,13 +49,14 @@ public class GameLoadingUI : MonoBehaviour
 
     public void HideLoading()
     {
+        if (loadingText != null) loadingText.text = "GOTOWE · 100%";
         showing = false;
         if (loadingPanel != null) loadingPanel.SetActive(false);
     }
 
     private void BuildVisuals()
     {
-        if (loadingText != null) loadingText.gameObject.SetActive(false);
+        if (loadingText != null) loadingText.gameObject.SetActive(true);
         if (tipText != null) tipText.gameObject.SetActive(false);
         if (artwork != null) return;
 
@@ -82,6 +90,17 @@ public class GameLoadingUI : MonoBehaviour
         image.fillMethod = Image.FillMethod.Radial360;
         image.fillAmount = 0.72f;
         image.raycastTarget = false;
+        if (loadingText != null)
+        {
+            loadingText.transform.SetParent(panel, false);
+            loadingText.rectTransform.anchorMin = new Vector2(.1f,.23f);
+            loadingText.rectTransform.anchorMax = new Vector2(.9f,.32f);
+            loadingText.rectTransform.offsetMin = loadingText.rectTransform.offsetMax = Vector2.zero;
+            loadingText.alignment = TextAlignmentOptions.Center;
+            loadingText.fontSize = 30f;
+            loadingText.color = new Color(1f,.9f,.68f);
+            loadingText.raycastTarget = false;
+        }
     }
 
     private void LateUpdate()
@@ -89,6 +108,8 @@ public class GameLoadingUI : MonoBehaviour
         if (!showing || loadingPanel == null || !loadingPanel.activeSelf || artwork == null) return;
         loadingPanel.transform.SetAsLastSibling();
         elapsed += Time.unscaledDeltaTime;
+        displayedProgress = Mathf.MoveTowards(displayedProgress, targetProgress, Time.unscaledDeltaTime * .4f);
+        if (loadingText != null) loadingText.text = stage + " · " + Mathf.FloorToInt(displayedProgress * 100f) + "%";
         spinner.localRotation = Quaternion.Euler(0f, 0f, -elapsed * 210f);
         Rect rect = artwork.rectTransform.rect;
         float spinnerSize = Mathf.Clamp(Mathf.Min(rect.width, rect.height) * 0.10f, 48f, 100f);

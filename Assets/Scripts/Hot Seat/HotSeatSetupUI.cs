@@ -1347,7 +1347,6 @@ public class HotSeatSetupUI : MonoBehaviour
             return;
 
         input.ActivateInputField();
-        StartCoroutine(SelectWholePlayerName(input));
         FocusPlayerInput(input);
     }
 
@@ -2557,7 +2556,7 @@ public class HotSeatSetupUI : MonoBehaviour
         input.caretColor = new Color(1f, 0.82f, 0.30f, 1f);
         input.caretBlinkRate = 0.55f;
         input.caretWidth = 4;
-        input.onFocusSelectAll = true;
+        input.onFocusSelectAll = false;
         input.keepTextSelectionVisible = true;
         input.selectionColor = new Color(0.72f, 0.49f, 0.08f, 0.55f);
     }
