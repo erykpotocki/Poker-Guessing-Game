@@ -1234,6 +1234,11 @@ public class CardDealTest : MonoBehaviour
 
     private CardView CreateBackCard(Vector2 anchoredPos)
     {
+        // The room uses the host's selected back so every client sees one deck.
+        if (PhotonNetwork.InRoom && PhotonNetwork.MasterClient != null &&
+            PhotonNetwork.MasterClient.CustomProperties != null &&
+            PhotonNetwork.MasterClient.CustomProperties.TryGetValue(PhotonAvatarSync.CardBackKey,out object selectedBack))
+            backIndex = cardBackDatabase.FindBackIndex(selectedBack?.ToString());
         CardView spawnedCard = Instantiate(cardPrefab, cardsParent);
         spawnedCard.SetBack(cardBackDatabase, backIndex);
 

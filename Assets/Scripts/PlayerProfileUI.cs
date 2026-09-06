@@ -8,6 +8,7 @@ public sealed class PlayerProfileUI : MonoBehaviour
 {
     private RectTransform root, body;
     private string message = "";
+    private string section = "all";
     public static void Show(Canvas canvas)
     {
         if (canvas.rootCanvas.transform.Find("PlayerProfileOverlay") != null) return;
@@ -73,6 +74,16 @@ public sealed class PlayerProfileUI : MonoBehaviour
         float y = 0f;
         if (!string.IsNullOrEmpty(message)) { Text(body,message,8,y,width-16,72); y += 80; }
         Text(body,$"Ukończone gry: {data.Statistics.GamesPlayed}   Wygrane: {data.Statistics.GamesWon}",8,y,width-16,64); y += 72;
+        string[] tabIds={"all","avatar","frame","back"}; string[] tabNames={"WSZYSTKO","AVATARY","RAMKI","REWERSY"};
+        float tabWidth=(width-24f)/4f;
+        for(int tab=0;tab<4;tab++)
+        {
+            string id=tabIds[tab];
+            Button(body,tabNames[tab],8+tab*tabWidth,y,tabWidth-6,64,()=>{section=id;Build();},section!=id);
+        }
+        y+=78;
+        if(section=="all"||section=="avatar")
+        {
         Text(body,"AVATARY",8,y,width-16,64,38); y += 70;
         AvatarDatabase avatars = Resources.Load<AvatarDatabase>("ProfileAvatars");
         if (avatars != null && avatars.avatars != null)
@@ -81,17 +92,27 @@ public sealed class PlayerProfileUI : MonoBehaviour
                 string id = "avatar_"+i;
                 ItemRow("avatar",id,"Avatar "+(i+1),avatars.avatars[i],data.Inventory.OwnedAvatars.Contains(id),data.Profile.SelectedAvatarId==id,ref y,width);
             }
+        }
+        if(section=="all"||section=="frame")
+        {
         Text(body,"RAMKI",8,y,width-16,64,38); y += 70;
         ItemRow("frame","none","Bez ramki",null,true,data.Profile.SelectedFrameId=="none",ref y,width);
         ItemRow("frame","classic_wood","CLASSIC WOOD · ukończ 1 grę",Resources.Load<Sprite>("Cosmetics/ClassicWood"),data.Inventory.OwnedFrames.Contains("classic_wood"),data.Profile.SelectedFrameId=="classic_wood",ref y,width);
+        }
+        if(section=="all"||section=="back")
+        {
         Text(body,"REWERSY",8,y,width-16,64,38); y += 70;
         CardBackDatabase backs = gameObject.GetComponent<CardBackDatabase>();
         if (backs == null) backs = gameObject.AddComponent<CardBackDatabase>();
         for (int i=0;i<backs.BackCount;i++)
         {
             Sprite sprite = backs.GetBackSprite(i); string id = sprite.texture.name;
-            ItemRow("back",id,id.Replace("HotSeatBack_",""),sprite,data.Inventory.OwnedCardBacks.Contains(id),data.Profile.SelectedCardBackId==id,ref y,width);
+            ProgressionRules.Own(data.Inventory.OwnedCardBacks,id);
+            ItemRow("back",id,id.Replace("HotSeatBack_",""),sprite,true,data.Profile.SelectedCardBackId==id,ref y,width);
         }
+        }
+        if(section=="all")
+        {
         Text(body,"OSIĄGNIĘCIA",8,y,width-16,64,38); y += 70;
         Achievement("Pierwsza gra → CLASSIC WOOD",data.Statistics.GamesPlayed,1,ref y,width);
         Achievement("10 gier → avatar",data.Statistics.GamesPlayed,10,ref y,width);
@@ -114,9 +135,7 @@ public sealed class PlayerProfileUI : MonoBehaviour
                 Button(body,claimed?"ODEBRANO":"ODBIERZ",width-250,y,242,72,()=>{ PlayerProfileService.ClaimMission(weekly,kind); Build(); },!claimed && progress[k]>=targets[k]); y+=84;
             }
         }
-        Text(body,"DZIENNE LOSOWANIE",8,y,width-16,64,38); y+=70;
-        Button(body,data.Wheel.FreeUsed?"DARMOWY SPIN WYKORZYSTANY":"ODBIERZ DARMOWY SPIN",8,y,width-16,80,()=>{ message=PlayerProfileService.Spin()??"Kolejny darmowy spin jutro."; Build(); },!data.Wheel.FreeUsed); y+=96;
-        Text(body,"Dodatkowe spiny za reklamy: niedostępne.\nIntegracja reklam nie jest uruchomiona.",8,y,width-16,110,28); y+=122;
+        }
         body.sizeDelta = new Vector2(width,y);
     }
     private void Achievement(string title,int value,int target,ref float y,float width)

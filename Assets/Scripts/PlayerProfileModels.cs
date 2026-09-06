@@ -32,7 +32,13 @@ namespace PokerProfile
         public int GamesBaseline, WinsBaseline, RoundsBaseline;
         public List<string> Claimed = new List<string>();
     }
-    [Serializable] public sealed class WheelState { public string Day = ""; public bool FreeUsed; public int ExtraUsed, ExtraCredits; }
+    [Serializable] public sealed class WheelState
+    {
+        public string Day = "";
+        public bool FreeUsed;
+        public int ExtraUsed, ExtraCredits;
+        public long NextFreeUtcTicks;
+    }
     [Serializable] public sealed class PlayerSave
     {
         public int Version = 1;

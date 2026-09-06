@@ -89,4 +89,14 @@ public class CardBackDatabase : MonoBehaviour
         return availableBackSprites[index];
     }
 
+    public int FindBackIndex(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return 0;
+        Sprite[] available = GetAvailableBackSprites();
+        for (int i = 0; i < available.Length; i++)
+            if (available[i] != null && available[i].texture != null && available[i].texture.name == id)
+                return i;
+        return 0;
+    }
+
 }

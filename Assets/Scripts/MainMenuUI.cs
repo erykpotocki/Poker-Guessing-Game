@@ -13,6 +13,7 @@ public class MainMenuUI : MonoBehaviour
     private Button rulesButton;
     private Button settingsButton;
     private Button profileButton;
+    private Button spinButton;
     private Button backButton;
     private GameObject infoOverlay;
     private TMP_Text infoTitle;
@@ -62,6 +63,7 @@ public class MainMenuUI : MonoBehaviour
             HidePreviewObject(rulesButton.gameObject);
             HidePreviewObject(settingsButton.gameObject);
             HidePreviewObject(profileButton.gameObject);
+            HidePreviewObject(spinButton.gameObject);
             HidePreviewObject(backButton.gameObject);
             HidePreviewObject(infoOverlay);
         }
@@ -77,6 +79,7 @@ public class MainMenuUI : MonoBehaviour
         DestroyPreviewObject(rulesButton);
         DestroyPreviewObject(settingsButton);
         DestroyPreviewObject(profileButton);
+        DestroyPreviewObject(spinButton);
         DestroyPreviewObject(backButton);
         if (infoOverlay != null)
             DestroyImmediate(infoOverlay);
@@ -92,7 +95,7 @@ public class MainMenuUI : MonoBehaviour
             }
         }
 
-        primaryButton = secondaryButton = rulesButton = settingsButton = profileButton = backButton = null;
+        primaryButton = secondaryButton = rulesButton = settingsButton = profileButton = spinButton = backButton = null;
         infoOverlay = null;
         editorPreviewBuilt = false;
     }
@@ -152,7 +155,9 @@ public class MainMenuUI : MonoBehaviour
         settingsButton = CreateMenuButton(
             "SettingsButton", styleSource, new Vector2(175.8f, -250f), new Vector2(151f, 44f), false);
         profileButton = CreateMenuButton(
-            "ProfileButton", styleSource, new Vector2(95.2f, -306f), new Vector2(312f, 44f), false);
+            "ProfileShortcut", styleSource, new Vector2(296f, -24f), new Vector2(58f, 58f), false);
+        spinButton = CreateMenuButton(
+            "SpinShortcut", styleSource, new Vector2(226f, -24f), new Vector2(58f, 58f), false);
         backButton = CreateMenuButton(
             "ModeBackButton", styleSource, new Vector2(95.2f, -250f), new Vector2(312f, 48f), false);
 
@@ -354,12 +359,14 @@ public class MainMenuUI : MonoBehaviour
         ConfigureButton(secondaryButton, "GRA NA JEDNYM TELEFONIE", "Graj offline", GoHotSeat);
         ConfigureButton(rulesButton, "ZASADY", string.Empty, ShowRules);
         ConfigureButton(settingsButton, "USTAWIENIA", string.Empty, ShowSettings);
-        ConfigureButton(profileButton, "MÓJ PROFIL", string.Empty, ShowProfile);
+        ConfigureButton(profileButton, "○", string.Empty, ShowProfile);
+        ConfigureButton(spinButton, "↻", string.Empty, ShowSpin);
         rulesButton.gameObject.SetActive(true);
         settingsButton.gameObject.SetActive(true);
-        profileButton.gameObject.SetActive(true);
+        profileButton.gameObject.SetActive(false);
+        spinButton.gameObject.SetActive(false);
         backButton.gameObject.SetActive(false);
-        ShowButtonsImmediately(primaryButton, secondaryButton, rulesButton, settingsButton, profileButton);
+        ShowButtonsImmediately(primaryButton, secondaryButton, rulesButton, settingsButton);
     }
 
     private void ShowMultiplayerOptions()
@@ -372,15 +379,24 @@ public class MainMenuUI : MonoBehaviour
         ConfigureButton(backButton, "WRÓĆ", string.Empty, ShowMainChoices);
         rulesButton.gameObject.SetActive(false);
         settingsButton.gameObject.SetActive(false);
-        profileButton.gameObject.SetActive(false);
+        ConfigureButton(profileButton, "○", string.Empty, ShowProfile);
+        ConfigureButton(spinButton, "↻", string.Empty, ShowSpin);
+        profileButton.gameObject.SetActive(true);
+        spinButton.gameObject.SetActive(true);
         backButton.gameObject.SetActive(true);
-        ShowButtonsImmediately(primaryButton, secondaryButton, backButton);
+        ShowButtonsImmediately(primaryButton, secondaryButton, backButton, spinButton, profileButton);
     }
 
     private void ShowProfile()
     {
         Canvas owner = menuGroup != null ? menuGroup.GetComponentInParent<Canvas>() : null;
         if (owner != null) PlayerProfileUI.Show(owner);
+    }
+
+    private void ShowSpin()
+    {
+        Canvas owner = menuGroup != null ? menuGroup.GetComponentInParent<Canvas>() : null;
+        if (owner != null) SpinRewardUI.Show(owner);
     }
 
     private static void ConfigureButton(

@@ -42,6 +42,7 @@ public static class PlayerProfileService
             current.Achievements ??= new System.Collections.Generic.List<string>();
             current.Receipts ??= new System.Collections.Generic.List<string>();
             current.Opponents ??= new System.Collections.Generic.List<OpponentRecord>();
+            for (int i = 0; i < 10; i++) ProgressionRules.Own(current.Inventory.OwnedAvatars,"avatar_"+i);
             ProgressionRules.RefreshPeriods(current,DateTime.UtcNow);
             return current;
         }
@@ -92,7 +93,28 @@ public static class PlayerProfileService
         return Data.Opponents.Find(item => item.ProfileId == profileId);
     }
     public static void CompleteRound(string id) { if (ProgressionRules.CompleteRound(Data,id,DateTime.UtcNow)) Save(); }
-    public static string Spin() { string reward = ProgressionRules.Spin(Data,UnityEngine.Random.Range(0,1000),DateTime.UtcNow); if (reward != null) Save(); return reward; }
+    public static TimeSpan SpinRemaining
+    {
+        get
+        {
+            long ticks = Data.Wheel.NextFreeUtcTicks - DateTime.UtcNow.Ticks;
+            return ticks > 0 ? TimeSpan.FromTicks(ticks) : TimeSpan.Zero;
+        }
+    }
+    public static bool CanSpin => SpinRemaining <= TimeSpan.Zero;
+    public static string Spin()
+    {
+        DateTime now = DateTime.UtcNow;
+        if (Data.Wheel.NextFreeUtcTicks > now.Ticks) return null;
+        Data.Wheel.FreeUsed = false;
+        string reward = ProgressionRules.Spin(Data,UnityEngine.Random.Range(0,1000),now);
+        if (reward != null)
+        {
+            Data.Wheel.NextFreeUtcTicks = now.AddHours(1).Ticks;
+            Save();
+        }
+        return reward;
+    }
     public static bool ClaimMission(bool weekly,string kind) { bool result = ProgressionRules.ClaimMission(Data,weekly,kind,DateTime.UtcNow); if (result) Save(); return result; }
     private static bool adInFlight;
     public static void RequestRewardedAd(IRewardedAdProvider provider,AdReward reward,Action<AdOutcome> done)
