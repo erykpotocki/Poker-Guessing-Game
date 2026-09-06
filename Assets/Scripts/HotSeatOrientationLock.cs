@@ -33,12 +33,19 @@ public class HotSeatOrientationLock : MonoBehaviour
 
     private void Awake()
     {
-        LockPortrait();
+        ApplyCurrentSceneOrientation();
     }
 
     private void Start()
     {
-        LockPortrait();
+        ApplyCurrentSceneOrientation();
+    }
+
+    private static void ApplyCurrentSceneOrientation()
+    {
+        Scene scene = SceneManager.GetActiveScene();
+        if (scene.name == "Game" || scene.name == "BootLoading") LockLandscape();
+        else LockPortrait();
     }
 
     public static void LockPortrait()

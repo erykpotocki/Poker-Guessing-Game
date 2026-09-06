@@ -1,6 +1,9 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
+using System.Runtime.InteropServices;
+using UnityEngine.Networking;
 
 public class GameLoadingUI : MonoBehaviour
 {
@@ -13,7 +16,29 @@ public class GameLoadingUI : MonoBehaviour
     private Sprite ringSprite;
     private bool showing;
     private float elapsed;
-    private static int lastArtwork = -1;
+    private Texture2D downloadedArtwork;
+#if UNITY_WEBGL && !UNITY_EDITOR
+    [DllImport("__Internal")] private static extern int PokerNextLoadingArtwork();
+#endif
+    private IEnumerator LoadArtwork()
+    {
+        int previous = PlayerPrefs.GetInt("loading.art", -1);
+        int index = previous < 1 || previous > 5 ? Random.Range(1, 6) : (previous - 1 + Random.Range(1, 5)) % 5 + 1;
+#if UNITY_WEBGL && !UNITY_EDITOR
+        index = PokerNextLoadingArtwork();
+#endif
+        PlayerPrefs.SetInt("loading.art", index);
+        string path = Application.streamingAssetsPath + "/LoadingScreens/" + index + ".png";
+        if (!path.Contains("://")) path = new System.Uri(path).AbsoluteUri;
+        using (UnityWebRequest request = UnityWebRequestTexture.GetTexture(path, true))
+        {
+            yield return request.SendWebRequest();
+            if (request.result != UnityWebRequest.Result.Success) yield break;
+            if (downloadedArtwork != null) Destroy(downloadedArtwork);
+            downloadedArtwork = DownloadHandlerTexture.GetContent(request);
+            if (artwork != null) artwork.texture = downloadedArtwork;
+        }
+    }
     private float targetProgress, displayedProgress;
     private string stage = "Przygotowywanie stołu…";
     public void SetProgress(float progress, string message)
@@ -32,16 +57,7 @@ public class GameLoadingUI : MonoBehaviour
         loadingPanel.transform.SetAsLastSibling();
         if (!showing)
         {
-            LoadingArtworkLibrary library = Resources.Load<LoadingArtworkLibrary>("UI/LoadingArtwork");
-            if (library != null && library.backgrounds != null && library.backgrounds.Length > 0)
-            {
-                int count = library.backgrounds.Length;
-                int index = lastArtwork < 0 || lastArtwork >= count
-                    ? Random.Range(0, count)
-                    : (lastArtwork + Random.Range(1, Mathf.Max(2, count))) % count;
-                lastArtwork = index;
-                artwork.texture = library.backgrounds[index];
-            }
+            StartCoroutine(LoadArtwork());
             elapsed = 0f;
         }
         showing = true;
@@ -152,6 +168,7 @@ public class GameLoadingUI : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (downloadedArtwork != null) Destroy(downloadedArtwork);
         if (ringSprite != null) Destroy(ringSprite);
         if (ringTexture != null) Destroy(ringTexture);
     }

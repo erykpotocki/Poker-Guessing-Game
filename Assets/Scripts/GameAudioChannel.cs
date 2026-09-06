@@ -11,5 +11,5 @@ public sealed class GameAudioChannel : MonoBehaviour
     private void Awake() { source = GetComponent<AudioSource>(); gain = source.volume; }
     private void OnEnable() { GameAudioSettings.Changed += Apply; Apply(); }
     private void OnDisable() { GameAudioSettings.Changed -= Apply; }
-    private void Apply() { if (source != null) source.volume = gain * (channel == Channel.Music ? GameAudioSettings.Music : GameAudioSettings.Effects); }
+    private void Apply() { if (source != null) source.volume = gain * (channel == Channel.Music ? GameAudioSettings.MusicGain : GameAudioSettings.EffectsGain); }
 }

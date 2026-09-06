@@ -19,6 +19,7 @@ public sealed class RoundReviewUI : MonoBehaviour
         public int[] matching;
         public int[] cardOwners;
         public string[] participantNames;
+        public string checkerName, declarerName;
     }
     [Serializable] private class History { public List<Entry> rounds = new List<Entry>(); }
     public const string HistoryKey = "roundReviewHistoryV1";
@@ -82,12 +83,13 @@ public sealed class RoundReviewUI : MonoBehaviour
     }
 
     public void Record(int round, string declaration, string id, bool exists, int loser,
-        List<int> participants, List<CardSpriteEntry> cards, Dictionary<int, List<CardSpriteEntry>> hands)
+        List<int> participants, List<CardSpriteEntry> cards, Dictionary<int, List<CardSpriteEntry>> hands, int checker, int declarer)
     {
         List<CardSpriteEntry> matches = MultiplayerHandRules.MatchingCards(id, cards, out _);
         Entry entry = new Entry
         {
             round = round, declaration = declaration, exists = exists, loser = loser,
+            checkerName = PlayerName(checker), declarerName = PlayerName(declarer),
             participants = participants.ToArray(),
             strongest = HandRankCatalog.GetDisplayName(MultiplayerHandRules.Strongest(cards)),
             cards = cards.ConvertAll(Code).ToArray(), matching = matches.ConvertAll(Code).ToArray()
@@ -109,6 +111,8 @@ public sealed class RoundReviewUI : MonoBehaviour
     }
 
     public string SerializeHistory() => JsonUtility.ToJson(history);
+    private static string PlayerName(int actor) => LobbyBotRegistry.TryGetBot(actor, out LobbyBotInfo bot) ? bot.Name :
+        PhotonNetwork.CurrentRoom != null && PhotonNetwork.CurrentRoom.Players.TryGetValue(actor, out var player) ? player.NickName : "Gracz " + actor;
 
     public void SetReviewVisible(bool visible, bool ready = false)
     {
@@ -157,7 +161,7 @@ public sealed class RoundReviewUI : MonoBehaviour
         contentRect.anchorMin = new Vector2(0f, 1f);
         contentRect.anchorMax = Vector2.one;
         contentRect.pivot = new Vector2(0.5f, 1f);
-        contentRect.sizeDelta = new Vector2(0f, Mathf.Max(200f, history.rounds.Count * 320f));
+        contentRect.sizeDelta = new Vector2(0f, Mathf.Max(200f, history.rounds.Count * 380f));
         ScrollRect scroll = viewport.GetComponent<ScrollRect>();
         scroll.content = contentRect;
         scroll.viewport = view;
@@ -174,72 +178,82 @@ public sealed class RoundReviewUI : MonoBehaviour
             Stretch(empty.rectTransform);
         }
         for (int i = 0; i < history.rounds.Count; i++)
+            BuildHistoryRow(contentRect, history.rounds[history.rounds.Count - 1 - i], i, deck);
+    }
+
+    private static void BuildHistoryRow(RectTransform parent, Entry entry, int index, CardSpriteEntry[] deck)
+    {
+        RectTransform row = new GameObject("Round_" + entry.round, typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
+        row.SetParent(parent, false);
+        row.anchorMin = new Vector2(0f, 1f); row.anchorMax = Vector2.one;
+        row.pivot = new Vector2(.5f, 1f);
+        row.anchoredPosition = new Vector2(0f, -index * 380f);
+        row.sizeDelta = new Vector2(0f, 360f);
+        row.GetComponent<Image>().color = new Color(.05f,.045f,.035f);
+        Image accent = new GameObject("StatusAccent", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+        accent.transform.SetParent(row, false);
+        accent.rectTransform.anchorMin = Vector2.zero; accent.rectTransform.anchorMax = new Vector2(0f,1f);
+        accent.rectTransform.offsetMin = Vector2.zero; accent.rectTransform.offsetMax = new Vector2(6f,0f);
+        accent.color = entry.exists ? new Color(.25f,.85f,.4f) : new Color(.9f,.26f,.23f);
+        string who = string.IsNullOrEmpty(entry.checkerName) ? "" : entry.checkerName + " → sprawdził → " + entry.declarerName + "\n";
+        TMP_Text heading = MakeText(row, "RUNDA " + entry.round + " • " + (entry.exists ? "BYŁ" : "NIE BYŁ") + "\n" +
+            who + "Sprawdzany układ: " + entry.declaration, 28f);
+        heading.richText = false;
+        heading.rectTransform.anchorMin = new Vector2(0f,1f); heading.rectTransform.anchorMax = Vector2.one;
+        heading.rectTransform.pivot = new Vector2(.5f,1f);
+        heading.rectTransform.offsetMin = new Vector2(20f,-112f); heading.rectTransform.offsetMax = new Vector2(-16f,-8f);
+
+        RectTransform view = new GameObject("CardsViewport", typeof(RectTransform), typeof(Image), typeof(RectMask2D), typeof(HistoryRowScroll)).GetComponent<RectTransform>();
+        view.SetParent(row,false);
+        view.anchorMin = Vector2.zero; view.anchorMax = Vector2.one;
+        view.offsetMin = new Vector2(16f,8f); view.offsetMax = new Vector2(-16f,-116f);
+        view.GetComponent<Image>().color = Color.clear;
+        RectTransform content = new GameObject("Hands",typeof(RectTransform)).GetComponent<RectTransform>();
+        content.SetParent(view,false);
+        content.anchorMin = content.anchorMax = new Vector2(0f,.5f); content.pivot = new Vector2(0f,.5f);
+        HistoryRowScroll scroll = view.GetComponent<HistoryRowScroll>();
+        scroll.viewport = view; scroll.content = content; scroll.horizontal = true; scroll.vertical = false;
+        scroll.movementType = ScrollRect.MovementType.Clamped; scroll.scrollSensitivity = 45f;
+        bool owners = entry.cardOwners != null && entry.cardOwners.Length == entry.cards.Length &&
+            entry.participants != null && entry.participants.Length > 0;
+        int count = owners ? entry.participants.Length : 1;
+        float x = 0f;
+        for (int p = 0; p < count; p++)
         {
-            Entry entry = history.rounds[history.rounds.Count - 1 - i];
-            GameObject row = new GameObject("Round_" + entry.round, typeof(RectTransform));
-            RectTransform rowRect = row.GetComponent<RectTransform>();
-            rowRect.SetParent(contentRect, false);
-            rowRect.anchorMin = new Vector2(0f, 1f);
-            rowRect.anchorMax = Vector2.one;
-            rowRect.pivot = new Vector2(0.5f, 1f);
-            rowRect.anchoredPosition = new Vector2(0f, -i * 320f);
-            rowRect.sizeDelta = new Vector2(0f, 300f);
-            string result = entry.exists ? "UKŁAD BYŁ" : "UKŁADU NIE BYŁO";
-            TMP_Text label = MakeText(rowRect, "RUNDA " + entry.round + " • " + entry.declaration +
-                " • " + result + "\nNajwyższy układ w kartach: " + entry.strongest, 30f);
-            label.rectTransform.anchorMin = new Vector2(0f, 0.68f);
-            label.rectTransform.anchorMax = Vector2.one;
-            label.rectTransform.offsetMin = label.rectTransform.offsetMax = Vector2.zero;
-            bool hasOwners = entry.cardOwners != null && entry.cardOwners.Length == entry.cards.Length &&
-                entry.participants != null && entry.participants.Length > 0;
-            if (hasOwners)
-                for (int p = 0; p < entry.participants.Length; p++)
-                {
-                    string name = entry.participantNames != null && p < entry.participantNames.Length ? entry.participantNames[p] : "Gracz " + entry.participants[p];
-                    TMP_Text owner = MakeText(rowRect, name, 26f);
-                    owner.richText = false;
-                    owner.alignment = TextAlignmentOptions.Center;
-                    owner.enableAutoSizing = true;
-                    owner.fontSizeMin = 20f; owner.fontSizeMax = 26f;
-                    owner.textWrappingMode = TextWrappingModes.NoWrap;
-                    owner.rectTransform.anchorMin = new Vector2((float)p / entry.participants.Length, 0.51f);
-                    owner.rectTransform.anchorMax = new Vector2((float)(p + 1) / entry.participants.Length, 0.65f);
-                    owner.rectTransform.offsetMin = owner.rectTransform.offsetMax = Vector2.zero;
-                }
+            var indices = new System.Collections.Generic.List<int>();
             for (int c = 0; c < entry.cards.Length; c++)
+                if (!owners || entry.cardOwners[c] == entry.participants[p]) indices.Add(c);
+            float width = Mathf.Max(170f, indices.Count * 128f + 20f);
+            string playerName = owners && entry.participantNames != null && p < entry.participantNames.Length ? entry.participantNames[p] : "Karty na stole";
+            TMP_Text name = MakeText(content, playerName, 27f);
+            name.richText = false;
+            SetCardRect(name.rectTransform,x,182f,width,40f);
+            name.alignment = TextAlignmentOptions.Center;
+            name.textWrappingMode = TextWrappingModes.NoWrap;
+            name.overflowMode = TextOverflowModes.Ellipsis;
+            for (int h = 0; h < indices.Count; h++)
             {
-                CardSpriteEntry card = Array.Find(deck, item => item != null && Code(item) == entry.cards[c]);
+                int code = entry.cards[indices[h]];
+                CardSpriteEntry card = Array.Find(deck,item => item != null && Code(item) == code);
                 if (card == null) continue;
-                GameObject cardObject = new GameObject("Card", typeof(RectTransform), typeof(Image));
-                Image image = cardObject.GetComponent<Image>();
-                RectTransform rect = image.rectTransform;
-                rect.SetParent(rowRect, false);
-                rect.anchorMin = new Vector2((float)c / entry.cards.Length, 0f);
-                rect.anchorMax = new Vector2((float)(c + 1) / entry.cards.Length, 0.57f);
-                if (hasOwners)
+                Image image = new GameObject("Card",typeof(RectTransform),typeof(Image)).GetComponent<Image>();
+                image.transform.SetParent(content,false);
+                SetCardRect(image.rectTransform,x+10f+h*128f,12f,112f,156f);
+                image.sprite = card.sprite; image.preserveAspect = true; image.raycastTarget = false;
+                if (entry.matching != null && Array.IndexOf(entry.matching,code) >= 0)
                 {
-                    int actor = entry.cardOwners[c];
-                    int playerIndex = Array.IndexOf(entry.participants, actor);
-                    int handCount = 0, handIndex = 0;
-                    for (int j = 0; j < entry.cardOwners.Length; j++)
-                        if (entry.cardOwners[j] == actor) { handCount++; if (j < c) handIndex++; }
-                    float columns = entry.participants.Length;
-                    rect.anchorMin = new Vector2((playerIndex + (float)handIndex / handCount) / columns, 0f);
-                    rect.anchorMax = new Vector2((playerIndex + (float)(handIndex + 1) / handCount) / columns, 0.49f);
-                }
-                rect.offsetMin = new Vector2(3f, 2f);
-                rect.offsetMax = new Vector2(-3f, -2f);
-                image.sprite = card.sprite;
-                image.preserveAspect = true;
-                image.raycastTarget = false;
-                if (Array.IndexOf(entry.matching, entry.cards[c]) >= 0)
-                {
-                    Outline outline = cardObject.AddComponent<Outline>();
-                    outline.effectColor = entry.exists ? new Color(0.3f, 1f, 0.45f) : new Color(1f, 0.78f, 0.2f);
-                    outline.effectDistance = new Vector2(3f, -3f);
+                    Outline outline = image.gameObject.AddComponent<Outline>();
+                    outline.effectColor = accent.color; outline.effectDistance = new Vector2(3f,-3f);
                 }
             }
+            x += width + 20f;
         }
+        content.sizeDelta = new Vector2(x,228f);
+    }
+    private static void SetCardRect(RectTransform rect,float x,float y,float width,float height)
+    {
+        rect.anchorMin = rect.anchorMax = Vector2.zero; rect.pivot = Vector2.zero;
+        rect.anchoredPosition = new Vector2(x,y); rect.sizeDelta = new Vector2(width,height);
     }
 
     private static Button MakeButton(string name, Transform parent, string caption, UnityEngine.Events.UnityAction action)

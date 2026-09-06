@@ -1412,8 +1412,18 @@ public partial class TurnManager : MonoBehaviour, IOnEventCallback
         if (PhotonNetwork.LocalPlayer != null && PhotonNetwork.CurrentRoom != null)
         {
             TryGetSharedGameSeed(out int seed);
-            PlayerProfileService.CompleteMatch(PhotonNetwork.CurrentRoom.Name + ":" + seed,
-                winnerActorNumber == PhotonNetwork.LocalPlayer.ActorNumber);
+            bool localWon = winnerActorNumber == PhotonNetwork.LocalPlayer.ActorNumber;
+            if (PlayerProfileService.CompleteMatch(PhotonNetwork.CurrentRoom.Name + ":" + seed, localWon))
+            {
+                foreach (Player opponent in PhotonNetwork.PlayerList)
+                {
+                    if (opponent == null || opponent.ActorNumber == PhotonNetwork.LocalPlayer.ActorNumber) continue;
+                    string profileId = opponent.CustomProperties != null &&
+                        opponent.CustomProperties.TryGetValue(PhotonAvatarSync.ProfileIdKey,out object rawId)
+                        ? rawId?.ToString() : "";
+                    PlayerProfileService.RecordOpponentMatch(profileId, opponent.NickName, localWon);
+                }
+            }
         }
 
         AddSystemLog("<b>Koniec gry</b>");

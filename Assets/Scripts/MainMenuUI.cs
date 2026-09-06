@@ -12,6 +12,7 @@ public class MainMenuUI : MonoBehaviour
     private Button secondaryButton;
     private Button rulesButton;
     private Button settingsButton;
+    private Button profileButton;
     private Button backButton;
     private GameObject infoOverlay;
     private TMP_Text infoTitle;
@@ -60,6 +61,7 @@ public class MainMenuUI : MonoBehaviour
             HidePreviewObject(secondaryButton.gameObject);
             HidePreviewObject(rulesButton.gameObject);
             HidePreviewObject(settingsButton.gameObject);
+            HidePreviewObject(profileButton.gameObject);
             HidePreviewObject(backButton.gameObject);
             HidePreviewObject(infoOverlay);
         }
@@ -74,6 +76,7 @@ public class MainMenuUI : MonoBehaviour
         DestroyPreviewObject(secondaryButton);
         DestroyPreviewObject(rulesButton);
         DestroyPreviewObject(settingsButton);
+        DestroyPreviewObject(profileButton);
         DestroyPreviewObject(backButton);
         if (infoOverlay != null)
             DestroyImmediate(infoOverlay);
@@ -89,7 +92,7 @@ public class MainMenuUI : MonoBehaviour
             }
         }
 
-        primaryButton = secondaryButton = rulesButton = settingsButton = backButton = null;
+        primaryButton = secondaryButton = rulesButton = settingsButton = profileButton = backButton = null;
         infoOverlay = null;
         editorPreviewBuilt = false;
     }
@@ -148,6 +151,8 @@ public class MainMenuUI : MonoBehaviour
             "RulesButton", styleSource, new Vector2(14.6f, -250f), new Vector2(151f, 44f), false);
         settingsButton = CreateMenuButton(
             "SettingsButton", styleSource, new Vector2(175.8f, -250f), new Vector2(151f, 44f), false);
+        profileButton = CreateMenuButton(
+            "ProfileButton", styleSource, new Vector2(95.2f, -306f), new Vector2(312f, 44f), false);
         backButton = CreateMenuButton(
             "ModeBackButton", styleSource, new Vector2(95.2f, -250f), new Vector2(312f, 48f), false);
 
@@ -349,10 +354,12 @@ public class MainMenuUI : MonoBehaviour
         ConfigureButton(secondaryButton, "GRA NA JEDNYM TELEFONIE", "Graj offline", GoHotSeat);
         ConfigureButton(rulesButton, "ZASADY", string.Empty, ShowRules);
         ConfigureButton(settingsButton, "USTAWIENIA", string.Empty, ShowSettings);
+        ConfigureButton(profileButton, "MÓJ PROFIL", string.Empty, ShowProfile);
         rulesButton.gameObject.SetActive(true);
         settingsButton.gameObject.SetActive(true);
+        profileButton.gameObject.SetActive(true);
         backButton.gameObject.SetActive(false);
-        ShowButtonsImmediately(primaryButton, secondaryButton, rulesButton, settingsButton);
+        ShowButtonsImmediately(primaryButton, secondaryButton, rulesButton, settingsButton, profileButton);
     }
 
     private void ShowMultiplayerOptions()
@@ -365,8 +372,15 @@ public class MainMenuUI : MonoBehaviour
         ConfigureButton(backButton, "WRÓĆ", string.Empty, ShowMainChoices);
         rulesButton.gameObject.SetActive(false);
         settingsButton.gameObject.SetActive(false);
+        profileButton.gameObject.SetActive(false);
         backButton.gameObject.SetActive(true);
         ShowButtonsImmediately(primaryButton, secondaryButton, backButton);
+    }
+
+    private void ShowProfile()
+    {
+        Canvas owner = menuGroup != null ? menuGroup.GetComponentInParent<Canvas>() : null;
+        if (owner != null) PlayerProfileUI.Show(owner);
     }
 
     private static void ConfigureButton(

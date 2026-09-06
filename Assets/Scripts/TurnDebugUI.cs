@@ -25,6 +25,8 @@ public class TurnDebugUI : MonoBehaviour
 
     private Vector3 timerBaseScale = Vector3.one;
     private RectTransform toolbarStatus;
+    private int previousCueActor = -1;
+    private int previousCueRound = -1;
 
     public void AttachToToolbar(RectTransform parent)
     {
@@ -43,8 +45,16 @@ public class TurnDebugUI : MonoBehaviour
         float timerWidth = Mathf.Min(230f, width * 0.32f);
         float timerLeft = Mathf.Min(90f, width * 0.08f);
         ConfigureStatusLabel(turnTimerText, timerLeft, 6f, timerWidth);
-        float turnLeft = Mathf.Max(timerLeft + timerWidth + 32f, width * 0.34f);
-        ConfigureStatusLabel(turnText, turnLeft, 6f, Mathf.Max(1f, width - turnLeft));
+        if (turnText.transform.parent != toolbarStatus) turnText.transform.SetParent(toolbarStatus, false);
+        Transform root = toolbarStatus.GetComponentInParent<Canvas>().rootCanvas.transform;
+        RectTransform table = root.Find("Table") as RectTransform;
+        const float statusWidth = 520f;
+        float centerX = width * 0.5f;
+        if (table != null)
+            centerX = toolbarStatus.InverseTransformPoint(table.TransformPoint(table.rect.center)).x;
+        centerX = Mathf.Clamp(centerX, timerLeft + timerWidth + statusWidth * 0.5f + 24f,
+            Mathf.Max(timerLeft + timerWidth + statusWidth * 0.5f + 24f, width - statusWidth * 0.5f));
+        ConfigureStatusLabel(turnText, centerX - statusWidth * 0.5f, 6f, statusWidth);
         turnText.alignment = TextAlignmentOptions.Center;
     }
 
@@ -158,7 +168,9 @@ public class TurnDebugUI : MonoBehaviour
 
         if (isLocalTurn)
         {
-            turnText.text = "Twoja tura";
+            turnText.text = "TWOJA TURA";
+            if (previousCueActor != actorNumber || previousCueRound != turnManager.CurrentRoundNumber)
+                CasinoAudio.PlayLocalTurn();
         }
         else
         {
@@ -177,8 +189,11 @@ public class TurnDebugUI : MonoBehaviour
                 playerDisplayName = player.NickName;
             }
 
-            turnText.text = "Ruch gracza " + playerDisplayName;
+            turnText.text = "TURA: " + playerDisplayName;
         }
+
+        previousCueActor = actorNumber;
+        previousCueRound = turnManager.CurrentRoundNumber;
 
         UpdateTimerVisuals();
     }

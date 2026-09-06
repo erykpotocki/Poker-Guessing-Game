@@ -11,6 +11,7 @@ public class LobbyStartPhoton : MonoBehaviourPunCallbacks
     [SerializeField] private int minPlayers = 2;
 
     private const string GameStartedKey = "gameStarted";
+    public Button StartButton => startButton;
 
     private void Awake()
     {

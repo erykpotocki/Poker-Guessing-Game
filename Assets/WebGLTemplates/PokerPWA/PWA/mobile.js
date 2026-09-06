@@ -34,6 +34,13 @@
     try { const result = screen.orientation?.lock?.(desired); result?.catch(() => {}); } catch (_) {}
   }
   window.PokerMobile = {
+    nextArtwork() {
+      let previous = 0;
+      try { previous = Number(localStorage.getItem('poker-loading-art') || 0); } catch (_) {}
+      const next = previous >= 1 && previous <= 5 ? ((previous - 1 + 1 + Math.floor(Math.random()*4)) % 5) + 1 : 1 + Math.floor(Math.random()*5);
+      try { localStorage.setItem('poker-loading-art',String(next)); } catch (_) {}
+      return next;
+    },
     keyboardFraction: 0,
     setOrientation(landscape) { sceneOrientation = landscape ? 'landscape' : 'portrait'; desired = booting ? 'landscape' : sceneOrientation; refresh(); tryLock(); },
     finishBoot() { booting = false; desired = sceneOrientation; refresh(); tryLock(); },
@@ -48,4 +55,6 @@
   window.visualViewport?.addEventListener('scroll', refresh);
   screen.orientation?.addEventListener('change', refresh);
   refresh();
+  const loading = document.getElementById('loading-screen');
+  if (loading) loading.style.backgroundImage = "linear-gradient(#0005,#0008),url('StreamingAssets/LoadingScreens/" + window.PokerMobile.nextArtwork() + ".png')";
 })();

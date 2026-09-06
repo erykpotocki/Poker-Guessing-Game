@@ -334,12 +334,32 @@ public class TableSeatSpawner : MonoBehaviour
             }
 
             view.Set(p.NickName, avatar);
+            view.ApplyFrame(GetStringProperty(p, PhotonAvatarSync.FrameKey));
+            int publicGames = GetIntProperty(p, PhotonAvatarSync.GamesPlayedKey);
+            int publicWins = GetIntProperty(p, PhotonAvatarSync.GamesWonKey);
+            string profileId = GetStringProperty(p, PhotonAvatarSync.ProfileIdKey);
+            Canvas owner = seatGO.GetComponentInParent<Canvas>();
+            view.ConfigureProfileButton(() => PublicPlayerProfileUI.Show(owner, avatar, p.NickName,
+                publicGames, publicWins, profileId));
         }
 
         if (cardDealTest != null)
         {
             cardDealTest.SetSeatOccupant(seatRT, p.ActorNumber);
         }
+    }
+
+    private static int GetIntProperty(Player player, string key)
+    {
+        if (player?.CustomProperties == null || !player.CustomProperties.TryGetValue(key,out object value)) return 0;
+        if (value is int number) return Mathf.Max(0,number);
+        return int.TryParse(value?.ToString(),out int parsed) ? Mathf.Max(0,parsed) : 0;
+    }
+
+    private static string GetStringProperty(Player player, string key)
+    {
+        if (player?.CustomProperties == null || !player.CustomProperties.TryGetValue(key,out object value)) return "";
+        return value?.ToString() ?? "";
     }
 
     private void SpawnBotSeat(LobbyBotInfo bot, float angleDeg, int seatIndex)

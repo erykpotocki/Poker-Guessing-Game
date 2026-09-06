@@ -12,7 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 76bfa302dc4246a6baf430bb30ce950a, type: 3}
   m_Name: LoadingArtwork
   m_EditorClassIdentifier: Assembly-CSharp::LoadingArtworkLibrary
-  backgrounds:
-  - {fileID: 2800000, guid: cbc7a59e623c6bb4088cfd3158127acd, type: 3}
-  - {fileID: 2800000, guid: 26427ff8af6be8945bd1ee28c601ee71, type: 3}
-  - {fileID: 2800000, guid: 882197883d870654e97ee44e78712ca8, type: 3}
+  backgrounds: []

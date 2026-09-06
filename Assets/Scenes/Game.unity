@@ -3675,7 +3675,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameLoadSync
   loadingUI: {fileID: 371922986}
   cardDealTest: {fileID: 1895406112}
-  minimumLoadingTime: 0.75
+  minimumLoadingTime: 5
   waitForRoomTimeout: 10
 --- !u!1 &423325758
 GameObject:

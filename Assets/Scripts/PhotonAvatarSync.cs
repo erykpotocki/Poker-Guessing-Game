@@ -6,13 +6,24 @@ public class PhotonAvatarSync : MonoBehaviourPunCallbacks
 {
     private const string AvatarKey = "avatarIndex";
     private const string PrefKey = "avatarIndex";
+    public const string ProfileIdKey = "profileIdV1";
+    public const string GamesPlayedKey = "profileGamesV1";
+    public const string GamesWonKey = "profileWinsV1";
+    public const string FrameKey = "frameIdV1";
+    public const string CardBackKey = "cardBackIdV1";
 
     private void Start()
     {
+        PlayerProfileService.Changed += PushAvatarIndexToPhoton;
         // WAŻNE: jeśli już jesteśmy w pokoju (np. po zmianie sceny),
         // to OnJoinedRoom się nie wywoła ponownie — więc ustawiamy tu.
         if (PhotonNetwork.InRoom)
             PushAvatarIndexToPhoton();
+    }
+
+    private void OnDestroy()
+    {
+        PlayerProfileService.Changed -= PushAvatarIndexToPhoton;
     }
 
     public override void OnJoinedRoom()
@@ -22,11 +33,17 @@ public class PhotonAvatarSync : MonoBehaviourPunCallbacks
 
     private void PushAvatarIndexToPhoton()
     {
-        int idx = PlayerPrefs.GetInt(PrefKey, 0);
+        int idx = PlayerPrefs.GetInt(PrefKey, PlayerProfileService.AvatarIndex);
+        string profileId = PlayerPrefs.GetString("PhotonUserId", "");
 
         var props = new Hashtable
         {
-            { AvatarKey, idx }
+            { AvatarKey, idx },
+            { ProfileIdKey, profileId },
+            { GamesPlayedKey, PlayerProfileService.Data.Statistics.GamesPlayed },
+            { GamesWonKey, PlayerProfileService.Data.Statistics.GamesWon },
+            { FrameKey, PlayerProfileService.Data.Profile.SelectedFrameId ?? "none" },
+            { CardBackKey, PlayerProfileService.Data.Profile.SelectedCardBackId ?? "HotSeatBack_Ornate" }
         };
 
         PhotonNetwork.LocalPlayer.SetCustomProperties(props);

@@ -13,7 +13,7 @@ public class AvatarPicker : MonoBehaviour
         if (avatarDatabase == null || avatarDatabase.avatars.Length == 0)
             return;
 
-        int idx = PlayerPrefs.GetInt(PrefKey, Random.Range(0, avatarDatabase.avatars.Length));
+        int idx = PlayerProfileService.AvatarIndex;
         SetAvatar(idx);
     }
 

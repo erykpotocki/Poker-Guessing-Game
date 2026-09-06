@@ -5,8 +5,14 @@ public static class GameAudioSettings
 {
     public static event Action Changed;
     public static bool Muted => PlayerPrefs.GetInt("audio.masterMuted", 0) == 1;
-    public static float Music => PlayerPrefs.GetFloat("audio.musicVolume", 0.7f);
+    public static float Music => PlayerPrefs.GetFloat("audio.musicVolume", 1f);
     public static float Effects => PlayerPrefs.GetFloat("audio.effectsVolume", 1f);
+    public static bool MusicMuted => PlayerPrefs.GetInt("audio.musicMuted", 0) == 1;
+    public static bool EffectsMuted => PlayerPrefs.GetInt("audio.effectsMuted", 0) == 1;
+    public static float MusicGain => MusicMuted ? 0f : Music;
+    public static float EffectsGain => EffectsMuted ? 0f : Effects;
+    public static void ToggleMusicMute() { PlayerPrefs.SetInt("audio.musicMuted", MusicMuted ? 0 : 1); PlayerPrefs.Save(); Changed?.Invoke(); }
+    public static void ToggleEffectsMute() { PlayerPrefs.SetInt("audio.effectsMuted", EffectsMuted ? 0 : 1); PlayerPrefs.Save(); Changed?.Invoke(); }
     public static bool Haptics => PlayerPrefs.GetInt("audio.haptics", 1) == 1;
     public static void ToggleHaptics()
     {

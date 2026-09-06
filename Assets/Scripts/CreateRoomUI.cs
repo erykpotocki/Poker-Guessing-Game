@@ -15,6 +15,8 @@ public class CreateRoomUI : MonoBehaviourPunCallbacks
 
     private void Start()
     {
+        if (nickInput != null && string.IsNullOrWhiteSpace(nickInput.text))
+            nickInput.SetTextWithoutNotify(PlayerProfileService.Data.Profile.Nickname);
         ConfigureResponsiveLayout();
         ConfigureMobileInput();
         if (roomCodeText != null)

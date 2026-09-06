@@ -19,6 +19,8 @@ public class JoinRoomUI : MonoBehaviourPunCallbacks
 
     private void Start()
     {
+        if (nickInput != null && string.IsNullOrWhiteSpace(nickInput.text))
+            nickInput.SetTextWithoutNotify(PlayerProfileService.Data.Profile.Nickname);
         ConfigureResponsiveLayout();
         ConfigureMobileInputs();
         if (joinButton != null)

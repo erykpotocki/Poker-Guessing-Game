@@ -80,9 +80,24 @@ public class BackToMenu : MonoBehaviourPunCallbacks
             float bottomInset = Screen.safeArea.yMin / canvasScale;
             buttonRect.anchorMin = buttonRect.anchorMax = new Vector2(0.5f, 0f);
             buttonRect.pivot = new Vector2(0.5f, 0f);
-            buttonRect.anchoredPosition = new Vector2(0f, bottomInset + 38f);
-            buttonRect.sizeDelta = new Vector2(380f, 92f);
+            bool isLobby = SceneManager.GetActiveScene().name == "Lobby";
+            buttonRect.anchoredPosition = new Vector2(isLobby ? -180f : 0f, bottomInset + (isLobby ? 54f : 38f));
+            buttonRect.sizeDelta = new Vector2(isLobby ? 330f : 380f, 92f);
             buttonRect.localScale = Vector3.one;
+
+            if (isLobby)
+            {
+                LobbyStartPhoton lobbyStart = FindFirstObjectByType<LobbyStartPhoton>();
+                RectTransform startRect = lobbyStart != null && lobbyStart.StartButton != null
+                    ? lobbyStart.StartButton.transform as RectTransform : null;
+                if (startRect != null)
+                {
+                    startRect.anchorMin = startRect.anchorMax = new Vector2(0.5f, 0f);
+                    startRect.pivot = new Vector2(0.5f, 0f);
+                    startRect.anchoredPosition = new Vector2(180f, bottomInset + 54f);
+                    startRect.sizeDelta = new Vector2(330f, 92f);
+                }
+            }
 
             TMP_Text bottomLabel = cornerBackButton.GetComponentInChildren<TMP_Text>(true);
             if (bottomLabel != null)

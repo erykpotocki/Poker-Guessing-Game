@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Events;
 
 public class SeatUIView : MonoBehaviour
 {
@@ -31,6 +32,7 @@ public class SeatUIView : MonoBehaviour
     private static Sprite circleMaskSprite;
     private static Sprite circleRingSprite;
     private GameObject readyIndicator;
+    private Image cosmeticFrame;
 
     public void SetReadyIndicator(bool ready)
     {
@@ -46,7 +48,7 @@ public class SeatUIView : MonoBehaviour
             rect.sizeDelta = avatarImage.rectTransform.rect.size + Vector2.one * 10f;
             Image ring = readyIndicator.GetComponent<Image>();
             ring.sprite = circleRingSprite;
-            ring.color = new Color(0.20f, 0.78f, 0.38f);
+            ring.color = new Color(0.16f, 1f, 0.36f);
             ring.raycastTarget = false;
         }
         if (readyIndicator != null) readyIndicator.SetActive(ready);
@@ -58,6 +60,7 @@ public class SeatUIView : MonoBehaviour
             readyIndicator.transform.position = avatarImage.rectTransform.TransformPoint(avatarImage.rectTransform.rect.center);
         if (avatarImage == null) return;
         Vector3 center = avatarImage.rectTransform.TransformPoint(avatarImage.rectTransform.rect.center);
+        if (cosmeticFrame != null) cosmeticFrame.rectTransform.position = center;
         if (activeTurnHighlight != null) activeTurnHighlight.position = center;
         if (nickText != null)
         {
@@ -111,6 +114,43 @@ public class SeatUIView : MonoBehaviour
     public void SetActiveTurnHighlight(bool isActive)
     {
         SetTurnHighlight(isActive);
+    }
+
+    public void ConfigureProfileButton(UnityAction action)
+    {
+        if (avatarImage == null || action == null) return;
+        Button button = avatarImage.GetComponent<Button>();
+        if (button == null) button = avatarImage.gameObject.AddComponent<Button>();
+        button.targetGraphic = avatarImage;
+        button.transition = Selectable.Transition.None;
+        button.onClick = new Button.ButtonClickedEvent();
+        button.onClick.AddListener(action);
+        avatarImage.raycastTarget = true;
+    }
+
+    public void ApplyFrame(string frameId)
+    {
+        bool enabled = frameId == "classic_wood";
+        if (!enabled)
+        {
+            if (cosmeticFrame != null) cosmeticFrame.gameObject.SetActive(false);
+            return;
+        }
+        if (cosmeticFrame == null && avatarImage != null)
+        {
+            GameObject frame = new GameObject("CosmeticFrame",typeof(RectTransform),typeof(Image));
+            frame.transform.SetParent(avatarImage.transform.parent,false);
+            cosmeticFrame = frame.GetComponent<Image>();
+            cosmeticFrame.sprite = Resources.Load<Sprite>("Cosmetics/ClassicWood");
+            cosmeticFrame.preserveAspect = true;
+            cosmeticFrame.raycastTarget = false;
+            cosmeticFrame.rectTransform.anchorMin = avatarImage.rectTransform.anchorMin;
+            cosmeticFrame.rectTransform.anchorMax = avatarImage.rectTransform.anchorMax;
+            cosmeticFrame.rectTransform.pivot = new Vector2(.5f,.5f);
+            cosmeticFrame.rectTransform.sizeDelta = new Vector2(154f,154f);
+            cosmeticFrame.transform.SetSiblingIndex(avatarImage.transform.GetSiblingIndex()+1);
+        }
+        if (cosmeticFrame != null) cosmeticFrame.gameObject.SetActive(cosmeticFrame.sprite != null);
     }
 
     public void ConfigureDealerCaption()
@@ -288,7 +328,7 @@ public class SeatUIView : MonoBehaviour
         Color[] ringPixels = new Color[size * size];
         Vector2 center = new Vector2((size - 1) * 0.5f, (size - 1) * 0.5f);
         float outerRadius = size * 0.49f;
-        float innerRadius = size * 0.455f;
+        float innerRadius = size * 0.42f;
 
         for (int y = 0; y < size; y++)
         {
