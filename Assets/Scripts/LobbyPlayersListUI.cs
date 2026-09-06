@@ -316,7 +316,7 @@ public class LobbyPlayersListUI : MonoBehaviourPunCallbacks
         rect.anchorMin = new Vector2(0.5f, 0.36f);
         rect.anchorMax = new Vector2(0.5f, 0.76f);
         rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = new Vector2(0f, -24f);
+        rect.anchoredPosition = new Vector2(0f, -64f);
         rect.sizeDelta = new Vector2(600f, 0f);
         ContentSizeFitter fitter = container.GetComponent<ContentSizeFitter>();
         if (fitter != null)

@@ -58,7 +58,7 @@ public class LobbyUI : MonoBehaviourPunCallbacks
             RectTransform rect = codeText.rectTransform;
             rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f);
             rect.pivot = new Vector2(0.5f, 1f);
-            rect.anchoredPosition = new Vector2(0f, -112f);
+            rect.anchoredPosition = new Vector2(0f, -192f);
             rect.sizeDelta = new Vector2(680f, 170f);
             codeText.alignment = TextAlignmentOptions.Top;
             codeText.fontSize = 68f;
@@ -71,7 +71,7 @@ public class LobbyUI : MonoBehaviourPunCallbacks
             RectTransform rect = gameModeText.rectTransform;
             rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f);
             rect.pivot = new Vector2(0.5f, 1f);
-            rect.anchoredPosition = new Vector2(0f, -344f);
+            rect.anchoredPosition = new Vector2(0f, -424f);
             rect.sizeDelta = new Vector2(680f, 54f);
             gameModeText.alignment = TextAlignmentOptions.Center;
             gameModeText.fontSize = 34f;
@@ -84,7 +84,7 @@ public class LobbyUI : MonoBehaviourPunCallbacks
             RectTransform rect = playerCount.rectTransform;
             rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f);
             rect.pivot = new Vector2(0.5f, 1f);
-            rect.anchoredPosition = new Vector2(0f, -272f);
+            rect.anchoredPosition = new Vector2(0f, -352f);
             rect.sizeDelta = new Vector2(680f, 54f);
             playerCount.alignment = TextAlignmentOptions.Center;
             playerCount.fontSize = 32f;

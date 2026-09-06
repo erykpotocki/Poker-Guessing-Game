@@ -15,9 +15,11 @@ public sealed class GameUtilityBar : MonoBehaviour
         canvas = owner.rootCanvas;
         bar = new GameObject("UtilityBar", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
         bar.SetParent(canvas.transform, false);
+        bar.SetAsLastSibling();
         bar.GetComponent<Image>().color = new Color(0.015f, 0.015f, 0.015f, 0.94f);
         controls = new GameObject("UtilityControls", typeof(RectTransform)).GetComponent<RectTransform>();
         controls.SetParent(bar, false);
+        controls.SetAsLastSibling();
         status = new GameObject("TurnStatus", typeof(RectTransform)).GetComponent<RectTransform>();
         status.SetParent(bar, false);
         turnStatus = FindFirstObjectByType<TurnDebugUI>();
@@ -53,14 +55,16 @@ public sealed class GameUtilityBar : MonoBehaviour
         controls.anchorMin = controls.anchorMax = Vector2.one;
         controls.pivot = Vector2.one;
         controls.sizeDelta = new Vector2(324f, 68f);
-        controls.anchoredPosition = new Vector2(-right, -top);
+        float safeRight = Mathf.Max(12f, right);
+        float safeTop = Mathf.Max(12f, top);
+        controls.anchoredPosition = new Vector2(-safeRight, -safeTop);
         RectTransform root = canvas.transform as RectTransform;
         float left = Screen.width > 0 ? Screen.safeArea.xMin * root.rect.width / Screen.width + 26f : 26f;
         status.anchorMin = new Vector2(0f, 1f);
         status.anchorMax = Vector2.one;
         status.pivot = new Vector2(0f, 1f);
-        status.offsetMin = new Vector2(left, -top - 68f);
-        status.offsetMax = new Vector2(-right - 324f - 32f, -top);
+        status.offsetMin = new Vector2(left, -safeTop - 68f);
+        status.offsetMax = new Vector2(-safeRight - 324f - 32f, -safeTop);
         if (turnStatus != null) turnStatus.LayoutStatusLabels();
     }
     private void RefreshSound()
@@ -165,27 +169,25 @@ public sealed class GameUtilityBar : MonoBehaviour
         overlay.gameObject.AddComponent<GraphicRaycaster>();
         RectTransform box = new GameObject("Settings", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
         box.SetParent(overlay, false);
-        box.sizeDelta = new Vector2(620f, 780f);
+        box.sizeDelta = new Vector2(620f, 720f);
         box.GetComponent<Image>().color = new Color(0.04f, 0.035f, 0.025f);
         Label(box, "DŹWIĘK", -42f);
         AddSlider(box, "Muzyka", -102f, GameAudioSettings.Music, GameAudioSettings.SetMusic);
-        AddSlider(box, "Efekty i przyciski", -230f, GameAudioSettings.Effects, GameAudioSettings.SetEffects);
+        AddSlider(box, "SFX / Dźwięki gry", -278f, GameAudioSettings.Effects, GameAudioSettings.SetEffects);
         AudioSettingsPanelState state = overlay.gameObject.AddComponent<AudioSettingsPanelState>();
-        Button context = SettingsAction(box, "MusicContext", "", 0f, -354f, state.ToggleContext);
-        (context.transform as RectTransform).sizeDelta = new Vector2(500f, 48f);
-        TMP_Text track = Label(box, "", -408f);
+        Button musicMute = SettingsAction(box, "MusicMute", "", 0f, -211f, GameAudioSettings.ToggleMusicMute);
+        (musicMute.transform as RectTransform).sizeDelta = new Vector2(500f, 64f);
+        Button effectsMute = SettingsAction(box, "EffectsMute", "", 0f, -389f, GameAudioSettings.ToggleEffectsMute);
+        (effectsMute.transform as RectTransform).sizeDelta = new Vector2(500f, 64f);
+        TMP_Text track = Label(box, "", -450f);
         track.enableAutoSizing = true;
         track.fontSizeMin = 24f; track.fontSizeMax = 30f;
-        TMP_Text permission = Label(box, "", -448f);
-        permission.fontSize = 23f;
-        Button previous = SettingsAction(box, "PreviousTrack", "POPRZEDNI", -130f, -500f, () => state.ChangeTrack(-1));
-        Button next = SettingsAction(box, "NextTrack", "NASTĘPNY", 130f, -500f, () => state.ChangeTrack(1));
         Button mute = SettingsAction(box, "MasterMute", "", 0f, -572f, GameAudioSettings.ToggleMute);
         (mute.transform as RectTransform).sizeDelta = new Vector2(500f, 56f);
-        Button haptics = SettingsAction(box, "Haptics", "", 0f, -638f, GameAudioSettings.ToggleHaptics);
+        Button haptics = SettingsAction(box, "Haptics", "", 0f, -511f, GameAudioSettings.ToggleHaptics);
         (haptics.transform as RectTransform).sizeDelta = new Vector2(500f, 56f);
-        state.Initialize(box, track, permission, previous, next, haptics.GetComponentInChildren<TMP_Text>(),
-            context.GetComponentInChildren<TMP_Text>(), mute.GetComponentInChildren<TMP_Text>());
+        state.Initialize(box, track, musicMute.GetComponentInChildren<TMP_Text>(), effectsMute.GetComponentInChildren<TMP_Text>(),
+            haptics.GetComponentInChildren<TMP_Text>(), mute.GetComponentInChildren<TMP_Text>());
         Button close = ButtonAt("UtilitySettingsClose", box, 185f, 250f, () => { PlayerPrefs.Save(); Destroy(overlay.gameObject); });
         RectTransform closeRect = close.transform as RectTransform;
         closeRect.anchorMin = closeRect.anchorMax = new Vector2(0.5f, 0f);
