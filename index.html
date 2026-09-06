@@ -18,7 +18,7 @@
       *, *::before, *::after { box-sizing: border-box; }
       html, body { margin: 0; width: 100%; height: 100%; min-height: 100%; overflow: hidden; background: #020b06; color: #fff; font-family: Arial, sans-serif; }
       body { position: fixed; inset: 0; display: grid; place-items: center; }
-      #unity-container { position: absolute; inset: 0; margin: auto; width: 100%; height: 100%; max-width: 620px; background: #020b06; }
+      #unity-container { position: absolute; inset: 0; margin: 0; width: 100%; height: 100%; background: #020b06; }
       #unity-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; background: #020b06; }
       #loading-screen { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; padding: max(20px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); background: linear-gradient(#0004, #0005), url('boot-background.png?v=6') center / cover no-repeat, #020b06; text-align: center; opacity: 1; transition: opacity .35s ease; }
       #loading-screen.hidden { opacity: 0; pointer-events: none; }
@@ -33,6 +33,7 @@
       #loading-status { margin: 0 0 16px; color: #fff8de; font-size: clamp(13px, 3.8vw, 17px); font-weight: bold; letter-spacing: .08em; }
       #loading-track { width: 100%; height: 14px; overflow: hidden; border: 1px solid #e6bd62; border-radius: 999px; background: #06190f; }
       #loading-progress { width: 0; height: 100%; background: linear-gradient(90deg, #9a6410, #f2c15c); transition: width .15s ease-out; }
+      @media (orientation: landscape) { #loading-content { width: min(80vw, 620px); grid-template-columns: 1fr 120px; gap: 14px 30px; } #loading-logo { margin: 0; max-height: 40vh; object-fit: contain; } #loading-chip { width: 90px; margin: 0; } #loading-status, #loading-track { grid-column: 1 / -1; } }
       @keyframes loading-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
       @keyframes loading-spin { to { transform: rotate(-360deg); } }
       @keyframes continue-pulse { 0%, 100% { opacity: .7; transform: scale(1); } 50% { opacity: 1; transform: scale(1.04); } }
@@ -66,6 +67,7 @@
           </div>
         </section>
     </div>
+    <script src="mobile.js"></script>
     <script>
       const canvas = document.querySelector('#unity-canvas');
       const loadingScreen = document.querySelector('#loading-screen');
@@ -76,7 +78,22 @@
       const updateTitle = document.querySelector('#update-title');
       const updateMessage = document.querySelector('#update-message');
       const updateClose = document.querySelector('#update-close');
-      const releaseVersion = '1.2.3';
+      const releaseVersion = '1.3.0';
+      let realProgress = 0, shownProgress = 0, runtimeReady = false, previousFrame = performance.now();
+      function renderProgress(now) {
+        const dt = Math.min(.1, (now - previousFrame) / 1000); previousFrame = now;
+        const target = runtimeReady ? 100 : Math.min(95, realProgress * 95);
+        shownProgress = Math.min(target, shownProgress + Math.max(4, (target - shownProgress) * 3) * dt);
+        const percent = Math.floor(shownProgress);
+        if (!loadingScreen.classList.contains('ready')) {
+          loadingProgress.style.width = percent + '%';
+          loadingTrack.setAttribute('aria-valuenow', String(percent));
+          loadingStatus.textContent = (realProgress < .9 ? 'POBIERANIE GRY… ' : runtimeReady ? 'PRZYGOTOWYWANIE… ' : 'URUCHAMIANIE… ') + percent + '%';
+          if (runtimeReady && shownProgress >= 100) waitForContinue();
+          else requestAnimationFrame(renderProgress);
+        }
+      }
+      requestAnimationFrame(renderProgress);
 
       function waitForContinue() {
         loadingProgress.style.width = '100%';
@@ -92,6 +109,7 @@
 
           event.preventDefault();
           event.stopPropagation();
+          window.PokerMobile?.finishBoot();
           loadingScreen.classList.add('hidden');
           window.setTimeout(() => { loadingScreen.style.display = 'none'; }, 400);
         };
@@ -115,7 +133,7 @@
       async function checkForNewVersion() {
         try {
           const response = await fetch('release-notes.json', { cache: 'no-store' });
-          if (!response.ok) return;
+          if (!response.ok) return true;
           const release = await response.json();
           const storageKey = 'poker-zgadywany-last-release';
           const previousVersion = localStorage.getItem(storageKey);
@@ -152,14 +170,9 @@
       const script = document.createElement('script');
       script.src = buildUrl + '/PWA.loader.js?v=' + releaseVersion;
       script.onload = () => createUnityInstance(canvas, config, progress => {
-        const percent = Math.round(progress * 100);
-        loadingProgress.style.width = percent + '%';
-        loadingTrack.setAttribute('aria-valuenow', String(percent));
-        loadingStatus.textContent = percent < 100
-          ? 'PRZYGOTOWYWANIE GRY · ' + percent + '%'
-          : 'URUCHAMIANIE GRY…';
+        realProgress = Math.max(realProgress, progress);
       }).then(() => {
-        waitForContinue();
+        runtimeReady = true;
       }).catch(() => {
           showRestartNotice(
             'Wymagane ponowne uruchomienie',
