@@ -6,6 +6,7 @@ using Photon.Pun;
 using Photon.Realtime;
 using UnityEngine;
 using UnityEngine.UI;
+using PokerProfile;
 
 public partial class TurnManager : MonoBehaviour, IOnEventCallback
 {
@@ -607,7 +608,8 @@ public partial class TurnManager : MonoBehaviour, IOnEventCallback
         EnsureRoundReview();
         roundReview.Record(currentRoundNumber, currentDeclaredRankText,
             GetHandIdFromOptionText(currentDeclaredRankText), declaredExists, loserActorNumber,
-            activeOrderBeforeResolution, cardDealTest.GetAllRoundCardsForEvaluation(), cardDealTest.GetRoundCardsByPlayerForHistory());
+            activeOrderBeforeResolution, cardDealTest.GetAllRoundCardsForEvaluation(), cardDealTest.GetRoundCardsByPlayerForHistory(),
+            checkingPlayerActorNumber, lastDeclarerActorNumber);
         reviewRound = currentRoundNumber;
         applyingReviewResult = true;
 
@@ -624,6 +626,7 @@ public partial class TurnManager : MonoBehaviour, IOnEventCallback
 
         applyingReviewResult = false;
         SaveTurnStateToRoom();
+
         HighlightReviewedCards();
         yield return WaitForRoundReady(activeOrderBeforeResolution);
         ContinueAfterReviewedRound(loserActorNumber, activeOrderBeforeResolution);
@@ -1404,6 +1407,14 @@ public partial class TurnManager : MonoBehaviour, IOnEventCallback
         int winnerActorNumber = activePlayerOrder.Count > 0 ? activePlayerOrder[0] : -1;
         string winnerName = winnerActorNumber > 0 ? GetPlayerDisplayName(winnerActorNumber) : "BRAK";
         Sprite winnerAvatar = winnerActorNumber > 0 ? GetPlayerAvatarSprite(winnerActorNumber) : null;
+
+        // Unlock progression only after the complete match; keep the frame unequipped.
+        if (PhotonNetwork.LocalPlayer != null && PhotonNetwork.CurrentRoom != null)
+        {
+            TryGetSharedGameSeed(out int seed);
+            PlayerProfileService.CompleteMatch(PhotonNetwork.CurrentRoom.Name + ":" + seed,
+                winnerActorNumber == PhotonNetwork.LocalPlayer.ActorNumber);
+        }
 
         AddSystemLog("<b>Koniec gry</b>");
         AddSystemLog("Wygrywa: <b>" + winnerName + "</b>");

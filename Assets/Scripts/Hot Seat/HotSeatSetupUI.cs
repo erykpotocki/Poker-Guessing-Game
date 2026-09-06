@@ -4,6 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
+using PokerProfile;
 
 public class HotSeatSetupUI : MonoBehaviour
 {
@@ -119,6 +120,7 @@ public class HotSeatSetupUI : MonoBehaviour
     private bool pendingBeginNewRound;
     private int pendingNextRoundStarterIndex = -1;
     private int roundNumber;
+    private string localMatchId;
     private bool previewCardSeen;
 
     private void Start()
@@ -281,6 +283,7 @@ public class HotSeatSetupUI : MonoBehaviour
 
         players.Clear();
         roundNumber = 0;
+        localMatchId = System.Guid.NewGuid().ToString("N");
 
         ChooseCardBackForThisGame();
 
@@ -1741,6 +1744,9 @@ public class HotSeatSetupUI : MonoBehaviour
 
         instructionText.text =
             "NACIŚNIJ KARTĘ, ABY ZAGRAĆ PONOWNIE";
+
+        // The reward is granted after the full hot-seat game, not after a round.
+        PlayerProfileService.CompleteMatch("hotseat:" + localMatchId, false);
     }
 
     private void RestartGame()
