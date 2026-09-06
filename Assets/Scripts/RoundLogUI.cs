@@ -15,7 +15,7 @@ public class RoundLogUI : MonoBehaviour
     [SerializeField] private TMP_Text logText;
 
     [Header("Text")]
-    [SerializeField, Min(1f)] private float logFontSize = 24f;
+    [SerializeField, Min(1f)] private float logFontSize = 26f;
 
     [Header("Scroll")]
     [SerializeField, Range(0f, 0.25f)] private float autoFollowThreshold = 0.06f;
@@ -52,11 +52,30 @@ public class RoundLogUI : MonoBehaviour
 
     private void LateUpdate()
     {
+        AnchorToGameplayEdge();
         if (!pendingRefresh)
             return;
 
         pendingRefresh = false;
         RefreshVisuals();
+    }
+
+    private void AnchorToGameplayEdge()
+    {
+        if (scrollRect == null || gameObject.scene.name != "Game" || Screen.width <= 0 || Screen.height <= 0) return;
+        Canvas canvas = GetComponentInParent<Canvas>();
+        if (canvas == null) return;
+        RectTransform root = canvas.rootCanvas.transform as RectTransform;
+        RectTransform rect = scrollRect.transform as RectTransform;
+        if (rect.parent != root) rect.SetParent(root,false);
+        rect.anchorMin = rect.anchorMax = new Vector2(0f,1f);
+        rect.pivot = new Vector2(0f,1f);
+        rect.localScale = Vector3.one;
+        // Keep the log in the narrow safe gap at the upper-left, clear of the
+        // first seat and the table. It must never cover another player's avatar.
+        rect.sizeDelta = new Vector2(350f,170f);
+        rect.anchoredPosition = new Vector2(Screen.safeArea.xMin * root.rect.width / Screen.width + 8f,
+            -(Screen.height - Screen.safeArea.yMax) * root.rect.height / Screen.height - 76f);
     }
 
     public void ClearLog()

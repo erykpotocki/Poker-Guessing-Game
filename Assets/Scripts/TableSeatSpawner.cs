@@ -353,6 +353,11 @@ public class TableSeatSpawner : MonoBehaviour
             Mathf.Sin(angleRad) * radiusY
         );
 
+        // Molek's authored avatar was visibly outside the left table edge at
+        // the six-seat layout; keep the seat on the felt with a small left nudge.
+        if (bot.Name != null && bot.Name.IndexOf("Molek", StringComparison.OrdinalIgnoreCase) >= 0)
+            pos.x -= 28f;
+
         GameObject seatGO = Instantiate(seatPrefab, tableCenter.parent);
         seatGO.name = $"Seat_{seatIndex}_{bot.ActorNumber}_{bot.Name}";
 

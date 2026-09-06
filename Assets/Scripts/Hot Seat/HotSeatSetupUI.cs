@@ -2348,8 +2348,11 @@ public class HotSeatSetupUI : MonoBehaviour
 
         if (startButton != null && startButton.transform is RectTransform startRect)
         {
-            startRect.anchoredPosition = new Vector2(0f, 260f);
-            startRect.sizeDelta = new Vector2(660f, 136f);
+            startRect.anchorMin = new Vector2(0.5f, 0f);
+            startRect.anchorMax = new Vector2(0.5f, 0f);
+            startRect.pivot = new Vector2(0.5f, 0f);
+            startRect.anchoredPosition = new Vector2(230f, 96f);
+            startRect.sizeDelta = new Vector2(420f, 92f);
         }
 
         if (playerListRoot is RectTransform listRect)
@@ -2416,7 +2419,7 @@ public class HotSeatSetupUI : MonoBehaviour
             rect.anchorMin = new Vector2(0.5f, 0f);
             rect.anchorMax = new Vector2(0.5f, 0f);
             rect.pivot = new Vector2(0.5f, 0f);
-            rect.anchoredPosition = new Vector2(0f, 96f);
+            rect.anchoredPosition = new Vector2(-230f, 96f);
             rect.sizeDelta = new Vector2(420f, 92f);
         }
 
