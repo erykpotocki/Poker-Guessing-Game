@@ -8,7 +8,7 @@ public sealed class PlayerProfileUI : MonoBehaviour
 {
     private RectTransform root, body;
     private string message = "";
-    private string section = "all";
+    private string section = "avatar";
     public static void Show(Canvas canvas)
     {
         if (canvas.rootCanvas.transform.Find("PlayerProfileOverlay") != null) return;
@@ -51,7 +51,15 @@ public sealed class PlayerProfileUI : MonoBehaviour
         float width = Screen.safeArea.width*sx-48f;
         var data = PlayerProfileService.Data;
         ProgressionRules.RefreshPeriods(data,DateTime.UtcNow);
-        Text(root,"MÓJ PROFIL",left,top,width-240,72,42);
+        AvatarDatabase headerAvatars = Resources.Load<AvatarDatabase>("ProfileAvatars");
+        if (headerAvatars != null && headerAvatars.avatars != null && headerAvatars.avatars.Length > 0)
+        {
+            int selected = Mathf.Clamp(PlayerProfileService.AvatarIndex,0,headerAvatars.avatars.Length-1);
+            Image currentAvatar = Rect("CurrentAvatar",root,left,top,88,88).gameObject.AddComponent<Image>();
+            currentAvatar.sprite = headerAvatars.avatars[selected]; currentAvatar.preserveAspect = true;
+            currentAvatar.raycastTarget = false;
+        }
+        Text(root,"MÓJ PROFIL",left+104,top,width-344,72,42);
         Button(root,"ZAMKNIJ",left+width-230,top,230,72,()=>Destroy(gameObject));
         Text(root,$"Monety: {data.Wallet.Coins}    Żetony: {data.Wallet.RewardCurrency}    Poziom: {data.Progression.Level}",left,top+80,width,64,30);
         RectTransform inputRect = Rect("ProfileNickname",root,left,top+154,width,86);
@@ -63,6 +71,7 @@ public sealed class PlayerProfileUI : MonoBehaviour
         input.onFocusSelectAll = false; input.resetOnDeActivation = false;
         input.richText = false; input.shouldHideSoftKeyboard = false;
         input.lineType = TMP_InputField.LineType.SingleLine;
+        input.onValueChanged.AddListener(value=> { if (value.Trim().Length >= 2) PlayerProfileService.SetNickname(value); });
         input.onEndEdit.AddListener(value=> { if (!PlayerProfileService.SetNickname(value)) input.SetTextWithoutNotify(PlayerProfileService.Data.Profile.Nickname); });
 
         RectTransform view = Rect("ProfileScroll",root,left,top+266,width,Mathf.Max(180,Screen.safeArea.height*sy-320));
@@ -74,32 +83,42 @@ public sealed class PlayerProfileUI : MonoBehaviour
         float y = 0f;
         if (!string.IsNullOrEmpty(message)) { Text(body,message,8,y,width-16,72); y += 80; }
         Text(body,$"Ukończone gry: {data.Statistics.GamesPlayed}   Wygrane: {data.Statistics.GamesWon}",8,y,width-16,64); y += 72;
-        string[] tabIds={"all","avatar","frame","back"}; string[] tabNames={"WSZYSTKO","AVATARY","RAMKI","REWERSY"};
-        float tabWidth=(width-24f)/4f;
-        for(int tab=0;tab<4;tab++)
+        string[] tabIds={"avatar","frame","back"}; string[] tabNames={"AVATARY","RAMKI","REWERSY"};
+        float tabWidth=(width-20f)/3f;
+        for(int tab=0;tab<3;tab++)
         {
             string id=tabIds[tab];
             Button(body,tabNames[tab],8+tab*tabWidth,y,tabWidth-6,64,()=>{section=id;Build();},section!=id);
         }
         y+=78;
-        if(section=="all"||section=="avatar")
+        if(section=="avatar")
         {
         Text(body,"AVATARY",8,y,width-16,64,38); y += 70;
         AvatarDatabase avatars = Resources.Load<AvatarDatabase>("ProfileAvatars");
         if (avatars != null && avatars.avatars != null)
+        {
+            const int columns = 7;
+            float cell = (width-16f)/columns;
+            float icon = Mathf.Min(112f,cell-10f);
             for (int i=0;i<avatars.avatars.Length;i++)
             {
-                string id = "avatar_"+i;
-                ItemRow("avatar",id,"Avatar "+(i+1),avatars.avatars[i],data.Inventory.OwnedAvatars.Contains(id),data.Profile.SelectedAvatarId==id,ref y,width);
+                int index=i; string id="avatar_"+i;
+                float x=8f+(i%columns)*cell+(cell-icon)*.5f;
+                float rowY=y+(i/columns)*(icon+18f);
+                AvatarTile(id,avatars.avatars[i],x,rowY,icon,data.Profile.SelectedAvatarId==id);
             }
+            y += Mathf.Ceil(avatars.avatars.Length/(float)columns)*(icon+18f)+12f;
         }
-        if(section=="all"||section=="frame")
+        }
+        if(section=="frame")
         {
         Text(body,"RAMKI",8,y,width-16,64,38); y += 70;
-        ItemRow("frame","none","Bez ramki",null,true,data.Profile.SelectedFrameId=="none",ref y,width);
-        ItemRow("frame","classic_wood","CLASSIC WOOD · ukończ 1 grę",Resources.Load<Sprite>("Cosmetics/ClassicWood"),data.Inventory.OwnedFrames.Contains("classic_wood"),data.Profile.SelectedFrameId=="classic_wood",ref y,width);
+        FrameTile("none",null,8,y,150,true,data.Profile.SelectedFrameId=="none");
+        FrameTile("classic_wood",Resources.Load<Sprite>("Cosmetics/ClassicWood"),176,y,150,
+            data.Inventory.OwnedFrames.Contains("classic_wood"),data.Profile.SelectedFrameId=="classic_wood");
+        y+=174;
         }
-        if(section=="all"||section=="back")
+        if(section=="back")
         {
         Text(body,"REWERSY",8,y,width-16,64,38); y += 70;
         CardBackDatabase backs = gameObject.GetComponent<CardBackDatabase>();
@@ -109,31 +128,6 @@ public sealed class PlayerProfileUI : MonoBehaviour
             Sprite sprite = backs.GetBackSprite(i); string id = sprite.texture.name;
             ProgressionRules.Own(data.Inventory.OwnedCardBacks,id);
             ItemRow("back",id,id.Replace("HotSeatBack_",""),sprite,true,data.Profile.SelectedCardBackId==id,ref y,width);
-        }
-        }
-        if(section=="all")
-        {
-        Text(body,"OSIĄGNIĘCIA",8,y,width-16,64,38); y += 70;
-        Achievement("Pierwsza gra → CLASSIC WOOD",data.Statistics.GamesPlayed,1,ref y,width);
-        Achievement("10 gier → avatar",data.Statistics.GamesPlayed,10,ref y,width);
-        Achievement("50 gier → avatar",data.Statistics.GamesPlayed,50,ref y,width);
-        Achievement("100 gier → rewers",data.Statistics.GamesPlayed,100,ref y,width);
-        Achievement("10 wygranych → 150 monet",data.Statistics.GamesWon,10,ref y,width);
-        Achievement("10 reklam → 5 żetonów",data.Statistics.AdsWatched,10,ref y,width);
-        Achievement("10 spinów → 100 monet",data.Statistics.Spins,10,ref y,width);
-        for (int period=0;period<2;period++)
-        {
-            bool weekly = period==1; MissionPeriod missions = weekly ? data.Weekly : data.Daily;
-            Text(body,weekly ? "MISJE TYGODNIOWE" : "MISJE DZIENNE",8,y,width-16,64,38); y += 70;
-            string[] kinds = {"games","wins","rounds"}; string[] names = {"Gry","Wygrane","Rundy"};
-            int[] progress = {data.Statistics.GamesPlayed-missions.GamesBaseline,data.Statistics.GamesWon-missions.WinsBaseline,data.Statistics.RoundsPlayed-missions.RoundsBaseline};
-            int[] targets = weekly ? new[]{10,3,30} : new[]{2,1,5};
-            for (int k=0;k<3;k++)
-            {
-                string kind=kinds[k]; bool claimed=missions.Claimed.Contains(kind);
-                Text(body,names[k]+": "+Mathf.Min(progress[k],targets[k])+" / "+targets[k],8,y,width-260,72);
-                Button(body,claimed?"ODEBRANO":"ODBIERZ",width-250,y,242,72,()=>{ PlayerProfileService.ClaimMission(weekly,kind); Build(); },!claimed && progress[k]>=targets[k]); y+=84;
-            }
         }
         }
         body.sizeDelta = new Vector2(width,y);
@@ -150,5 +144,42 @@ public sealed class PlayerProfileUI : MonoBehaviour
         Text(body,title,126,y+4,width-398,110,28);
         Button(body,selected?"WYBRANO":owned?"ZAŁÓŻ":"ZABLOKOWANE",width-260,y+20,250,76,()=>{ PlayerProfileService.Equip(category,id); Build(); },owned&&!selected);
         y+=126;
+    }
+
+    private void AvatarTile(string id,Sprite sprite,float x,float y,float size,bool selected)
+    {
+        RectTransform tile=Rect("AvatarTile",body,x,y,size,size);
+        Image border=tile.gameObject.AddComponent<Image>();
+        border.color=selected?new Color(1f,.72f,.18f,1f):new Color(.2f,.12f,.07f,.75f);
+        Button button=tile.gameObject.AddComponent<Button>();button.targetGraphic=border;button.transition=Selectable.Transition.ColorTint;
+        RectTransform imageRect=Rect("Avatar",tile,5,5,size-10,size-10);
+        Image image=imageRect.gameObject.AddComponent<Image>();image.sprite=sprite;image.preserveAspect=true;image.raycastTarget=false;
+        button.onClick.AddListener(()=>{PlayerProfileService.Equip("avatar",id);Build();});
+    }
+
+    private void FrameTile(string id,Sprite sprite,float x,float y,float size,bool owned,bool selected)
+    {
+        RectTransform tile=Rect("FrameTile",body,x,y,size,size);
+        Image border=tile.gameObject.AddComponent<Image>();
+        border.color=selected?new Color(1f,.72f,.18f,1f):new Color(.2f,.12f,.07f,.75f);
+        Button button=tile.gameObject.AddComponent<Button>();button.targetGraphic=border;button.interactable=owned;
+        if(sprite!=null)
+        {
+            Image image=Rect("Frame",tile,6,6,size-12,size-12).gameObject.AddComponent<Image>();
+            image.sprite=sprite;image.preserveAspect=true;image.raycastTarget=false;
+            image.color=owned?Color.white:new Color(.3f,.3f,.3f,.6f);
+        }
+        else
+        {
+            TMP_Text empty=Text(tile,"BEZ\nRAMKI",8,8,size-16,size-16,24);empty.alignment=TextAlignmentOptions.Center;
+        }
+        if(!owned)
+        {
+            Image shade=Rect("LockedShade",tile,3,3,size-6,size-6).gameObject.AddComponent<Image>();shade.color=new Color(0,0,0,.46f);shade.raycastTarget=false;
+            Color lockColor=new Color(1f,.75f,.25f,.95f);
+            Rect("LockBody",tile,size*.35f,size*.47f,size*.3f,size*.25f).gameObject.AddComponent<Image>().color=lockColor;
+            Rect("LockTop",tile,size*.39f,size*.32f,size*.22f,size*.18f).gameObject.AddComponent<Image>().color=lockColor;
+        }
+        if(owned)button.onClick.AddListener(()=>{PlayerProfileService.Equip("frame",id);Build();});
     }
 }
