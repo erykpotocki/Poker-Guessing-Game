@@ -373,8 +373,6 @@ public class MainMenuUI : MonoBehaviour
         ConfigureButton(rulesButton, "ZASADY", string.Empty, ShowRules);
         ConfigureButton(settingsButton, "USTAWIENIA", string.Empty, ShowSettings);
         ConfigureButton(shopButton, "SKLEP", string.Empty, ShowShop);
-        ConfigureButton(profileButton, "○", string.Empty, ShowProfile);
-        ConfigureButton(spinButton, "↻", string.Empty, ShowSpin);
         rulesButton.gameObject.SetActive(true);
         settingsButton.gameObject.SetActive(true);
         shopButton.gameObject.SetActive(true);
@@ -395,12 +393,10 @@ public class MainMenuUI : MonoBehaviour
         rulesButton.gameObject.SetActive(false);
         settingsButton.gameObject.SetActive(false);
         shopButton.gameObject.SetActive(false);
-        ConfigureButton(profileButton, "○", string.Empty, ShowProfile);
-        ConfigureButton(spinButton, "↻", string.Empty, ShowSpin);
-        profileButton.gameObject.SetActive(true);
-        spinButton.gameObject.SetActive(true);
+        profileButton.gameObject.SetActive(false);
+        spinButton.gameObject.SetActive(false);
         backButton.gameObject.SetActive(true);
-        ShowButtonsImmediately(primaryButton, secondaryButton, backButton, spinButton, profileButton);
+        ShowButtonsImmediately(primaryButton, secondaryButton, backButton);
     }
 
     private void ShowProfile()
