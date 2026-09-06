@@ -25,6 +25,12 @@ namespace PokerProfile
         public int GamesTogether;
         public int WinsAgainst;
     }
+    [Serializable] public sealed class PendingUnlock
+    {
+        public string Category = "";
+        public string ItemId = "";
+        public string Title = "";
+    }
     [Serializable] public sealed class Progression { public long Experience; public int Level => 1 + (int)(Experience / 100); }
     [Serializable] public sealed class MissionPeriod
     {
@@ -52,6 +58,7 @@ namespace PokerProfile
         public List<string> Achievements = new List<string>();
         public List<string> Receipts = new List<string>();
         public List<OpponentRecord> Opponents = new List<OpponentRecord>();
+        public List<PendingUnlock> PendingUnlocks = new List<PendingUnlock>();
     }
     public interface IProfileStore { string Load(); void Save(string json); }
     public enum AdOutcome { Completed, Cancelled, Failed, Unavailable }
@@ -118,7 +125,7 @@ namespace PokerProfile
         }
         public static void Evaluate(PlayerSave d)
         {
-            Award(d,"first_game",d.Statistics.GamesPlayed,1,()=>Own(d.Inventory.OwnedFrames,"classic_wood"));
+            Award(d,"first_game",d.Statistics.GamesPlayed,1,()=>Unlock(d,"frame","classic_wood","ODBLOKOWANO NOWĄ RAMKĘ"));
             Award(d,"games_10",d.Statistics.GamesPlayed,10,()=>Own(d.Inventory.OwnedAvatars,"avatar_1"));
             Award(d,"games_50",d.Statistics.GamesPlayed,50,()=>Own(d.Inventory.OwnedAvatars,"avatar_2"));
             Award(d,"games_100",d.Statistics.GamesPlayed,100,()=>Own(d.Inventory.OwnedCardBacks,"HotSeatBack_RedDiamond"));
@@ -127,6 +134,16 @@ namespace PokerProfile
             Award(d,"spins_10",d.Statistics.Spins,10,()=>d.Wallet.Coins += 100);
         }
         public static void Own(List<string> inventory,string id) { if (!inventory.Contains(id)) inventory.Add(id); }
+        public static void Unlock(PlayerSave data,string category,string id,string title)
+        {
+            List<string> inventory = category == "avatar" ? data.Inventory.OwnedAvatars :
+                category == "back" ? data.Inventory.OwnedCardBacks : data.Inventory.OwnedFrames;
+            bool wasOwned = inventory.Contains(id);
+            Own(inventory,id);
+            if (wasOwned) return;
+            data.PendingUnlocks ??= new List<PendingUnlock>();
+            data.PendingUnlocks.Add(new PendingUnlock { Category=category,ItemId=id,Title=title });
+        }
         private static void Award(PlayerSave d,string id,int progress,int target,Action grant)
         {
             if (progress < target || d.Achievements.Contains(id)) return;
@@ -162,7 +179,7 @@ namespace PokerProfile
             roll = Math.Max(0,Math.Min(999,roll));
             d.Statistics.Spins++;
             string reward;
-            if (roll < 5) { d.Wallet.RewardCurrency++; reward = "1 żeton nagród"; }
+            if (roll < 5) { d.Wallet.RewardCurrency++; reward = "1 niebieski diament"; }
             else { int coins = 10 + roll % 41; d.Wallet.Coins += coins; reward = coins + " monet"; }
             Evaluate(d); return reward;
         }

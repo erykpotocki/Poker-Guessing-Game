@@ -12,6 +12,7 @@ public class MainMenuUI : MonoBehaviour
     private Button secondaryButton;
     private Button rulesButton;
     private Button settingsButton;
+    private Button shopButton;
     private Button profileButton;
     private Button spinButton;
     private Button backButton;
@@ -47,6 +48,13 @@ public class MainMenuUI : MonoBehaviour
             screenCanvasGroup.alpha = 1f;
     }
 
+    private IEnumerator Start()
+    {
+        yield return null;
+        Canvas owner=menuGroup!=null?menuGroup.GetComponentInParent<Canvas>():null;
+        if(owner!=null)UnlockPresentationUI.ShowPending(owner);
+    }
+
 #if UNITY_EDITOR
     public void RefreshEditorPreview()
     {
@@ -62,6 +70,7 @@ public class MainMenuUI : MonoBehaviour
             HidePreviewObject(secondaryButton.gameObject);
             HidePreviewObject(rulesButton.gameObject);
             HidePreviewObject(settingsButton.gameObject);
+            HidePreviewObject(shopButton.gameObject);
             HidePreviewObject(profileButton.gameObject);
             HidePreviewObject(spinButton.gameObject);
             HidePreviewObject(backButton.gameObject);
@@ -78,6 +87,7 @@ public class MainMenuUI : MonoBehaviour
         DestroyPreviewObject(secondaryButton);
         DestroyPreviewObject(rulesButton);
         DestroyPreviewObject(settingsButton);
+        DestroyPreviewObject(shopButton);
         DestroyPreviewObject(profileButton);
         DestroyPreviewObject(spinButton);
         DestroyPreviewObject(backButton);
@@ -95,7 +105,7 @@ public class MainMenuUI : MonoBehaviour
             }
         }
 
-        primaryButton = secondaryButton = rulesButton = settingsButton = profileButton = spinButton = backButton = null;
+        primaryButton = secondaryButton = rulesButton = settingsButton = shopButton = profileButton = spinButton = backButton = null;
         infoOverlay = null;
         editorPreviewBuilt = false;
     }
@@ -151,9 +161,11 @@ public class MainMenuUI : MonoBehaviour
         secondaryButton = CreateMenuButton(
             "SecondaryModeButton", styleSource, new Vector2(95.2f, -170f), new Vector2(312f, 64f), true);
         rulesButton = CreateMenuButton(
-            "RulesButton", styleSource, new Vector2(14.6f, -250f), new Vector2(151f, 44f), false);
+            "RulesButton", styleSource, new Vector2(14.6f, -310f), new Vector2(151f, 44f), false);
         settingsButton = CreateMenuButton(
-            "SettingsButton", styleSource, new Vector2(175.8f, -250f), new Vector2(151f, 44f), false);
+            "SettingsButton", styleSource, new Vector2(175.8f, -310f), new Vector2(151f, 44f), false);
+        shopButton = CreateMenuButton(
+            "ShopButton", styleSource, new Vector2(95.2f, -250f), new Vector2(312f, 48f), false);
         profileButton = CreateMenuButton(
             "ProfileShortcut", styleSource, new Vector2(296f, -24f), new Vector2(58f, 58f), false);
         spinButton = CreateMenuButton(
@@ -164,6 +176,7 @@ public class MainMenuUI : MonoBehaviour
         Canvas canvas = menuGroup.GetComponentInParent<Canvas>();
         if (canvas != null)
         {
+            AuthorWatermark.Ensure(canvas);
             screenCanvasGroup = canvas.GetComponent<CanvasGroup>();
             if (screenCanvasGroup == null)
                 screenCanvasGroup = canvas.gameObject.AddComponent<CanvasGroup>();
@@ -359,14 +372,16 @@ public class MainMenuUI : MonoBehaviour
         ConfigureButton(secondaryButton, "GRA NA JEDNYM TELEFONIE", "Graj offline", GoHotSeat);
         ConfigureButton(rulesButton, "ZASADY", string.Empty, ShowRules);
         ConfigureButton(settingsButton, "USTAWIENIA", string.Empty, ShowSettings);
+        ConfigureButton(shopButton, "SKLEP", string.Empty, ShowShop);
         ConfigureButton(profileButton, "○", string.Empty, ShowProfile);
         ConfigureButton(spinButton, "↻", string.Empty, ShowSpin);
         rulesButton.gameObject.SetActive(true);
         settingsButton.gameObject.SetActive(true);
+        shopButton.gameObject.SetActive(true);
         profileButton.gameObject.SetActive(false);
         spinButton.gameObject.SetActive(false);
         backButton.gameObject.SetActive(false);
-        ShowButtonsImmediately(primaryButton, secondaryButton, rulesButton, settingsButton);
+        ShowButtonsImmediately(primaryButton, secondaryButton, shopButton, rulesButton, settingsButton);
     }
 
     private void ShowMultiplayerOptions()
@@ -379,6 +394,7 @@ public class MainMenuUI : MonoBehaviour
         ConfigureButton(backButton, "WRÓĆ", string.Empty, ShowMainChoices);
         rulesButton.gameObject.SetActive(false);
         settingsButton.gameObject.SetActive(false);
+        shopButton.gameObject.SetActive(false);
         ConfigureButton(profileButton, "○", string.Empty, ShowProfile);
         ConfigureButton(spinButton, "↻", string.Empty, ShowSpin);
         profileButton.gameObject.SetActive(true);
@@ -397,6 +413,12 @@ public class MainMenuUI : MonoBehaviour
     {
         Canvas owner = menuGroup != null ? menuGroup.GetComponentInParent<Canvas>() : null;
         if (owner != null) SpinRewardUI.Show(owner);
+    }
+
+    private void ShowShop()
+    {
+        Canvas owner = menuGroup != null ? menuGroup.GetComponentInParent<Canvas>() : null;
+        if (owner != null) ShopUI.Show(owner);
     }
 
     private static void ConfigureButton(

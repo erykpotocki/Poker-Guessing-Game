@@ -61,7 +61,9 @@ public sealed class PlayerProfileUI : MonoBehaviour
         }
         Text(root,"MÓJ PROFIL",left+104,top,width-344,72,42);
         Button(root,"ZAMKNIJ",left+width-230,top,230,72,()=>Destroy(gameObject));
-        Text(root,$"Monety: {data.Wallet.Coins}    Żetony: {data.Wallet.RewardCurrency}    Poziom: {data.Progression.Level}",left,top+80,width,64,30);
+        Text(root,$"Monety: {data.Wallet.Coins}    Diamenty: {data.Wallet.RewardCurrency}    Poziom: {data.Progression.Level}",left,top+80,width,64,30);
+        TMP_Text signature=Text(root,"© Eryk Potocki",left+width-280,root.rect.height-42,280,30,18);
+        signature.alignment=TextAlignmentOptions.BottomRight;signature.color=new Color(1f,.86f,.62f,.55f);
         RectTransform inputRect = Rect("ProfileNickname",root,left,top+154,width,86);
         inputRect.gameObject.AddComponent<Image>().color = new Color(.13f,.12f,.09f);
         TMP_InputField input = inputRect.gameObject.AddComponent<TMP_InputField>();

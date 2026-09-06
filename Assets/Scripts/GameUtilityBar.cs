@@ -13,6 +13,7 @@ public sealed class GameUtilityBar : MonoBehaviour
     public void Initialize(Canvas owner, Button exit)
     {
         canvas = owner.rootCanvas;
+        AuthorWatermark.Ensure(canvas);
         bar = new GameObject("UtilityBar", typeof(RectTransform), typeof(Image)).GetComponent<RectTransform>();
         bar.SetParent(canvas.transform, false);
         bar.SetAsLastSibling();

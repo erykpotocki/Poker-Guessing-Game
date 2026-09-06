@@ -42,6 +42,7 @@ public static class PlayerProfileService
             current.Achievements ??= new System.Collections.Generic.List<string>();
             current.Receipts ??= new System.Collections.Generic.List<string>();
             current.Opponents ??= new System.Collections.Generic.List<OpponentRecord>();
+            current.PendingUnlocks ??= new System.Collections.Generic.List<PendingUnlock>();
             for (int i = 0; i < 10; i++) ProgressionRules.Own(current.Inventory.OwnedAvatars,"avatar_"+i);
             ProgressionRules.RefreshPeriods(current,DateTime.UtcNow);
             return current;
@@ -69,8 +70,33 @@ public static class PlayerProfileService
     public static bool CompleteMatch(string id,bool won)
     {
         bool completed = ProgressionRules.CompleteMatch(Data,id,won,DateTime.UtcNow);
-        if (completed) Save();
+        if (completed)
+        {
+            if (!(id??"").StartsWith("hotseat:",StringComparison.OrdinalIgnoreCase) && StableDrop(id,10)==0)
+                Data.Wallet.RewardCurrency++;
+            Save();
+        }
         return completed;
+    }
+    private static int StableDrop(string value,int modulo)
+    {
+        unchecked { int hash=17; foreach(char c in value??"") hash=hash*31+c; return (hash&int.MaxValue)%Mathf.Max(1,modulo); }
+    }
+    public static PendingUnlock PeekUnlock() => Data.PendingUnlocks.Count > 0 ? Data.PendingUnlocks[0] : null;
+    public static void AcceptUnlock()
+    {
+        if (Data.PendingUnlocks.Count == 0) return;
+        Data.PendingUnlocks.RemoveAt(0); Save();
+    }
+    public static bool BuyWithDiamonds(string category,string id,int price,string title)
+    {
+        if (price < 0 || Data.Wallet.RewardCurrency < price) return false;
+        bool owned = category == "avatar" ? Data.Inventory.OwnedAvatars.Contains(id) :
+            category == "back" ? Data.Inventory.OwnedCardBacks.Contains(id) : Data.Inventory.OwnedFrames.Contains(id);
+        if (owned) return false;
+        Data.Wallet.RewardCurrency -= price;
+        ProgressionRules.Unlock(Data,category,id,title);
+        Save(); return true;
     }
     public static void RecordOpponentMatch(string profileId,string nickname,bool localWon)
     {
