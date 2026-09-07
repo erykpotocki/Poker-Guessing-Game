@@ -18,7 +18,9 @@ public class AutoResumeRoom : MonoBehaviourPunCallbacks
     private bool triedAutoResume = false;
     private bool leavingRejectedRoom = false;
 
-    private void Start()
+    // Launch always stays in the portrait menu. A saved match may only be
+    // resumed by an explicit user action, never automatically during startup.
+    public void ResumeSavedRoom()
     {
         StartCoroutine(TryAutoResume());
     }
@@ -54,6 +56,7 @@ public class AutoResumeRoom : MonoBehaviourPunCallbacks
 
     public override void OnJoinedRoom()
     {
+        if (!triedAutoResume) return;
         bool gameStarted = false;
         bool gameEnded = false;
 
@@ -88,13 +91,29 @@ public class AutoResumeRoom : MonoBehaviourPunCallbacks
 
         ClearResumePrefs();
         if (gameStarted)
-            HotSeatOrientationLock.LockLandscape();
+        {
+            MultiplayerLoadingTransition.Begin();
+            StartCoroutine(EnterStartedGame());
+        }
+        else SceneManager.LoadScene(lobbySceneName);
+    }
 
-        SceneManager.LoadScene(gameStarted ? gameSceneName : lobbySceneName);
+    private IEnumerator EnterStartedGame()
+    {
+        yield return null;
+        if (!PhotonNetwork.InRoom)
+        {
+            MultiplayerLoadingTransition.Finish();
+            HotSeatOrientationLock.LockPortrait();
+            yield break;
+        }
+        if (PhotonNetwork.IsMessageQueueRunning)
+            PhotonNetwork.LoadLevel(gameSceneName);
     }
 
     public override void OnLeftRoom()
     {
+        if (!triedAutoResume) return;
         leavingRejectedRoom = false;
 
         if (SceneManager.GetActiveScene().name != "MainMenu")
@@ -103,6 +122,7 @@ public class AutoResumeRoom : MonoBehaviourPunCallbacks
 
     public override void OnJoinRoomFailed(short returnCode, string message)
     {
+        if (!triedAutoResume) return;
         ClearResumePrefs();
         Debug.LogWarning($"AutoResumeRoom: Rejoin failed: {message} ({returnCode})");
     }

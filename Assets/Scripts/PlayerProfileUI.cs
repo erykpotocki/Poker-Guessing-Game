@@ -16,8 +16,9 @@ public sealed class PlayerProfileUI : MonoBehaviour
         obj.transform.SetParent(canvas.rootCanvas.transform,false);
         RectTransform rect = obj.transform as RectTransform;
         rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one; rect.offsetMin = rect.offsetMax = Vector2.zero;
+        PortraitMenuTopBar.ApplyOverlayInset(rect);
         obj.GetComponent<Image>().color = new Color(.025f,.032f,.025f,.99f);
-        Canvas modal = obj.GetComponent<Canvas>(); modal.overrideSorting = true; modal.sortingOrder = 400;
+        Canvas modal = obj.GetComponent<Canvas>(); modal.overrideSorting = true; modal.sortingOrder = 620;
         obj.GetComponent<PlayerProfileUI>().Build();
     }
     private static RectTransform Rect(string name,Transform parent,float x,float y,float width,float height)
@@ -57,13 +58,14 @@ public sealed class PlayerProfileUI : MonoBehaviour
             int selected = Mathf.Clamp(PlayerProfileService.AvatarIndex,0,headerAvatars.avatars.Length-1);
             Image currentAvatar = Rect("CurrentAvatar",root,left,top,88,88).gameObject.AddComponent<Image>();
             currentAvatar.sprite = headerAvatars.avatars[selected]; currentAvatar.preserveAspect = true;
+            AvatarCircleUtility.Apply(currentAvatar);
             currentAvatar.raycastTarget = false;
         }
         Text(root,"MÓJ PROFIL",left+104,top,width-344,72,42);
         Button(root,"ZAMKNIJ",left+width-230,top,230,72,()=>Destroy(gameObject));
         Text(root,$"Monety: {data.Wallet.Coins}    Diamenty: {data.Wallet.RewardCurrency}    Poziom: {data.Progression.Level}",left,top+80,width,64,30);
-        TMP_Text signature=Text(root,"© Eryk Potocki",left+width-280,root.rect.height-42,280,30,18);
-        signature.alignment=TextAlignmentOptions.BottomRight;signature.color=new Color(1f,.86f,.62f,.55f);
+        TMP_Text signature=Text(root,"© Eryk Potocki",left+(width-320f)*.5f,root.rect.height-28,320,22,16);
+        signature.alignment=TextAlignmentOptions.Bottom;signature.color=new Color(1f,.86f,.62f,.36f);
         RectTransform inputRect = Rect("ProfileNickname",root,left,top+154,width,86);
         inputRect.gameObject.AddComponent<Image>().color = new Color(.13f,.12f,.09f);
         TMP_InputField input = inputRect.gameObject.AddComponent<TMP_InputField>();
@@ -102,11 +104,18 @@ public sealed class PlayerProfileUI : MonoBehaviour
             const int columns = 7;
             float cell = (width-16f)/columns;
             float icon = Mathf.Min(112f,cell-10f);
-            for (int i=0;i<avatars.avatars.Length;i++)
+            var ordered = new System.Collections.Generic.List<int>();
+            for (int i=0;i<avatars.avatars.Length;i++) ordered.Add(i);
+            ordered.Sort((a,b)=> {
+                bool first=data.Inventory.OwnedAvatars.Contains(PlayerProfileService.AvatarId(a,avatars.avatars[a]));
+                bool second=data.Inventory.OwnedAvatars.Contains(PlayerProfileService.AvatarId(b,avatars.avatars[b]));
+                return first==second?a.CompareTo(b):first?-1:1;
+            });
+            for (int position=0;position<ordered.Count;position++)
             {
-                int index=i; string id="avatar_"+i;
-                float x=8f+(i%columns)*cell+(cell-icon)*.5f;
-                float rowY=y+(i/columns)*(icon+18f);
+                int i=ordered[position]; string id=PlayerProfileService.AvatarId(i,avatars.avatars[i]);
+                float x=8f+(position%columns)*cell+(cell-icon)*.5f;
+                float rowY=y+(position/columns)*(icon+18f);
                 AvatarTile(id,avatars.avatars[i],x,rowY,icon,data.Profile.SelectedAvatarId==id);
             }
             y += Mathf.Ceil(avatars.avatars.Length/(float)columns)*(icon+18f)+12f;
@@ -156,6 +165,16 @@ public sealed class PlayerProfileUI : MonoBehaviour
         Button button=tile.gameObject.AddComponent<Button>();button.targetGraphic=border;button.transition=Selectable.Transition.ColorTint;
         RectTransform imageRect=Rect("Avatar",tile,5,5,size-10,size-10);
         Image image=imageRect.gameObject.AddComponent<Image>();image.sprite=sprite;image.preserveAspect=true;image.raycastTarget=false;
+        AvatarCircleUtility.Apply(image);
+        bool owned=PlayerProfileService.Data.Inventory.OwnedAvatars.Contains(id);
+        button.interactable=owned;
+        if(!owned)
+        {
+            image.enabled=false;
+            Color gold=new Color(1f,.75f,.25f,.95f);
+            Rect("LockTop",tile,size*.39f,size*.25f,size*.22f,size*.24f).gameObject.AddComponent<Image>().color=gold;
+            Rect("LockBody",tile,size*.32f,size*.44f,size*.36f,size*.3f).gameObject.AddComponent<Image>().color=gold;
+        }
         button.onClick.AddListener(()=>{PlayerProfileService.Equip("avatar",id);Build();});
     }
 

@@ -16,8 +16,9 @@ public sealed class PublicPlayerProfileUI : MonoBehaviour
         RectTransform root = overlay.transform as RectTransform;
         root.anchorMin = Vector2.zero; root.anchorMax = Vector2.one;
         root.offsetMin = root.offsetMax = Vector2.zero;
+        PortraitMenuTopBar.ApplyOverlayInset(root);
         overlay.GetComponent<Image>().color = new Color(0f, 0f, 0f, .78f);
-        Canvas layer = overlay.GetComponent<Canvas>(); layer.overrideSorting = true; layer.sortingOrder = 450;
+        Canvas layer = overlay.GetComponent<Canvas>(); layer.overrideSorting = true; layer.sortingOrder = 620;
 
         RectTransform card = MakeRect("ProfileCard", root, new Vector2(.5f,.5f), Vector2.zero, new Vector2(680f,480f));
         card.gameObject.AddComponent<Image>().color = new Color(.12f,.025f,.018f,.98f);
@@ -25,6 +26,7 @@ public sealed class PublicPlayerProfileUI : MonoBehaviour
         Image portrait = MakeRect("Avatar", card, new Vector2(.5f,1f), new Vector2(0f,-52f), new Vector2(150f,150f))
             .gameObject.AddComponent<Image>();
         portrait.sprite = avatar; portrait.preserveAspect = true; portrait.raycastTarget = false;
+        AvatarCircleUtility.Apply(portrait);
         Label(card, nickname, new Vector2(0f,-220f), new Vector2(620f,62f), 40f);
         Label(card, "Rozegrane gry: " + Mathf.Max(0,games), new Vector2(0f,-292f), new Vector2(620f,48f), 30f);
         Label(card, "Wygrane: " + Mathf.Max(0,wins), new Vector2(0f,-344f), new Vector2(620f,48f), 30f);

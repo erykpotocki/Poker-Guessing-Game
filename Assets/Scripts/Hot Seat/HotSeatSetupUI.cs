@@ -23,6 +23,7 @@ public class HotSeatSetupUI : MonoBehaviour
         public int CardCount = 1;
         public bool Eliminated;
         public bool PenaltyGoingUp = true;
+        public bool HasSeenCurrentPresentation;
 
         public readonly List<CardSpriteEntry> Cards =
             new List<CardSpriteEntry>();
@@ -105,6 +106,7 @@ public class HotSeatSetupUI : MonoBehaviour
 
     private Coroutine roundRevealCoroutine;
     private bool roundRevealInProgress;
+    private bool resultLayoutActive;
 
     private readonly List<HotSeatPlayer> players =
         new List<HotSeatPlayer>();
@@ -354,6 +356,10 @@ public class HotSeatSetupUI : MonoBehaviour
 
     private void OnCardClicked()
     {
+        // Ignore repeated taps while handing the phone to the next player.
+        if (previewTransitionRoutine != null)
+            return;
+
         if (currentPhase == HotSeatPhase.RoundResult)
         {
             if (roundRevealInProgress)
@@ -392,6 +398,7 @@ public class HotSeatSetupUI : MonoBehaviour
 
     private void ShowCardBack()
     {
+        ClearUnseenCardSparkles();
         cardVisible = false;
 
         HotSeatPlayer player = players[currentPlayerIndex];
@@ -419,6 +426,9 @@ public class HotSeatSetupUI : MonoBehaviour
             previewContinueButton.gameObject.SetActive(
                 currentPhase == HotSeatPhase.FirstCardPreview && previewCardSeen
             );
+
+        if (!player.HasSeenCurrentPresentation && player.Cards.Count > 0)
+            PlayUnseenCardSparkles();
     }
 
     private void ShowCardFront()
@@ -427,6 +437,9 @@ public class HotSeatSetupUI : MonoBehaviour
         cardVisible = true;
 
         HotSeatPlayer player = players[currentPlayerIndex];
+        // Reveal all cards for this preview/turn at once. Re-covering within the
+        // same turn does not restore the effect; the next turn starts it anew.
+        player.HasSeenCurrentPresentation = true;
 
         if (currentPhase == HotSeatPhase.FirstCardPreview)
         {
@@ -670,6 +683,7 @@ public class HotSeatSetupUI : MonoBehaviour
     private void ShowRoundCards()
     {
         ClearRoundResultObjects();
+        ConfigureResultScreenLayout();
         CreateRoundTable();
 
         List<HotSeatPlayer> resultPlayers = new List<HotSeatPlayer>();
@@ -679,25 +693,32 @@ public class HotSeatSetupUI : MonoBehaviour
                 resultPlayers.Add(player);
         }
 
-        int totalCards = 0;
+        int columns = resultPlayers.Count <= 2 ? 1 : 2;
+        int rows = Mathf.CeilToInt((float)resultPlayers.Count / columns);
+        Rect area = cardImage.rectTransform.rect;
+        float cellWidth = (area.width - 80f) / columns;
+        float rowHeight = (area.height - 64f) / Mathf.Max(1, rows);
+        int largestHand = 1;
         foreach (HotSeatPlayer player in resultPlayers)
-            totalCards += Mathf.Min(player.Cards.Count, 3);
-
-        float cardWidth = totalCards <= 6 ? 150f :
-            totalCards <= 10 ? 118f : 94f;
+            largestHand = Mathf.Max(largestHand, Mathf.Min(player.Cards.Count, 3));
+        float cardWidth = Mathf.Min(230f, (rowHeight - 92f) / 1.39f,
+            (cellWidth - 28f) / (1f + .85f * (largestHand - 1)));
         float cardHeight = cardWidth * 1.39f;
-        float spacing = cardWidth * 0.78f;
+        float spacing = cardWidth * 0.85f;
 
         for (int row = 0; row < resultPlayers.Count; row++)
         {
             HotSeatPlayer player = resultPlayers[row];
-            Vector2 seatPosition = GetResultSeatPosition(
-                row,
-                resultPlayers.Count
-            );
+            int column = row % columns;
+            int rowIndex = row / columns;
+            bool lastSingle = columns == 2 && row == resultPlayers.Count - 1 && column == 0;
+            Vector2 seatPosition = new Vector2(
+                lastSingle ? 0f : (column - (columns - 1) * .5f) * cellWidth,
+                area.height * .5f - 32f - (rowIndex + .5f) * rowHeight);
             CreateRoundResultLabel(
                 player.Name,
-                seatPosition + new Vector2(0f, cardHeight * 0.62f)
+                seatPosition + new Vector2(0f, cardHeight * .5f + 24f),
+                cellWidth - 24f
             );
 
             int visibleCards = Mathf.Min(player.Cards.Count, 3);
@@ -721,14 +742,27 @@ public class HotSeatSetupUI : MonoBehaviour
         }
     }
 
-    private Vector2 GetResultSeatPosition(int index, int playerCount)
+    private void ConfigureResultScreenLayout()
     {
-        float angle = 90f - 360f * index / playerCount;
-        float radians = angle * Mathf.Deg2Rad;
-        return new Vector2(
-            Mathf.Cos(radians) * 220f,
-            Mathf.Sin(radians) * 270f
-        );
+        resultLayoutActive = true;
+        RectTransform board = cardImage.rectTransform;
+        board.anchorMin = new Vector2(.045f, .32f);
+        board.anchorMax = new Vector2(.955f, .84f);
+        board.pivot = new Vector2(.5f, .5f);
+        board.offsetMin = board.offsetMax = Vector2.zero;
+        board.localScale = Vector3.one;
+        board.localRotation = Quaternion.identity;
+        if (instructionText != null)
+        {
+            RectTransform message = instructionText.rectTransform;
+            message.anchorMin = new Vector2(.07f, .055f);
+            message.anchorMax = new Vector2(.93f, .295f);
+            message.offsetMin = message.offsetMax = Vector2.zero;
+            instructionText.alignment = TextAlignmentOptions.Center;
+            instructionText.fontSizeMin = 28f;
+            instructionText.fontSizeMax = 40f;
+            instructionText.lineSpacing = 10f;
+        }
     }
 
     private void CreateRoundTable()
@@ -741,19 +775,21 @@ public class HotSeatSetupUI : MonoBehaviour
         tableObject.transform.SetAsFirstSibling();
 
         RectTransform rect = tableObject.AddComponent<RectTransform>();
-        rect.anchorMin = new Vector2(0.5f, 0.5f);
-        rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.sizeDelta = new Vector2(700f, 480f);
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = new Vector2(24f, 24f);
+        rect.offsetMax = new Vector2(-24f, -24f);
 
         Image image = tableObject.AddComponent<Image>();
         image.sprite = resultTableSprite;
+        image.color = new Color(1f, 1f, 1f, .22f);
         image.preserveAspect = true;
         image.raycastTarget = false;
 
         roundResultObjects.Add(tableObject);
     }
 
-    private void CreateRoundResultLabel(string playerName, Vector2 position)
+    private void CreateRoundResultLabel(string playerName, Vector2 position, float width)
     {
         GameObject labelObject = new GameObject("HS_ResultPlayerName");
         labelObject.transform.SetParent(cardImage.transform, false);
@@ -761,15 +797,19 @@ public class HotSeatSetupUI : MonoBehaviour
         RectTransform rect = labelObject.AddComponent<RectTransform>();
         rect.anchorMin = new Vector2(0.5f, 0.5f);
         rect.anchorMax = new Vector2(0.5f, 0.5f);
-        rect.sizeDelta = new Vector2(560f, 48f);
+        rect.sizeDelta = new Vector2(width, 52f);
         rect.anchoredPosition = position;
 
         TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
         label.text = playerName;
-        label.fontSize = 30f;
+        label.enableAutoSizing = true;
+        label.fontSizeMin = 26f;
+        label.fontSizeMax = 36f;
+        label.textWrappingMode = TextWrappingModes.NoWrap;
+        label.overflowMode = TextOverflowModes.Ellipsis;
         label.fontStyle = FontStyles.Bold;
         label.alignment = TextAlignmentOptions.Center;
-        label.color = new Color(0.12f, 0.12f, 0.15f);
+        label.color = new Color(1f, .86f, .55f);
         label.raycastTarget = false;
 
         roundResultObjects.Add(labelObject);
@@ -945,6 +985,16 @@ public class HotSeatSetupUI : MonoBehaviour
 
     private void ClearRoundResultObjects()
     {
+        if (resultLayoutActive)
+        {
+            resultLayoutActive = false;
+            RectTransform board = cardImage.rectTransform;
+            board.anchorMin = board.anchorMax = new Vector2(.5f, .5f);
+            board.pivot = new Vector2(.5f, .5f);
+            board.sizeDelta = new Vector2(760f, 1058f);
+            board.anchoredPosition = new Vector2(0f, 90f);
+            ApplyCardScreenStyle();
+        }
         if (roundRevealCoroutine != null)
         {
             StopCoroutine(roundRevealCoroutine);
@@ -1000,6 +1050,11 @@ public class HotSeatSetupUI : MonoBehaviour
         {
             if (cardPanelCanvasGroup != null)
                 cardPanelCanvasGroup.alpha = 1f;
+            if (previewContinueButton != null)
+            {
+                previewContinueButton.interactable = true;
+                previewContinueButton.gameObject.SetActive(false);
+            }
             previewTransitionRoutine = null;
             ShowPassPhoneScreen();
             yield break;
@@ -1026,7 +1081,6 @@ public class HotSeatSetupUI : MonoBehaviour
         if (previewContinueButton != null)
             previewContinueButton.interactable = true;
 
-        PlayUnseenCardSparkles();
         previewTransitionRoutine = null;
     }
 
@@ -1040,6 +1094,16 @@ public class HotSeatSetupUI : MonoBehaviour
         if (unseenCardSparkleSprites.Count == 0)
             return;
 
+        AddUnseenCardSparkles(cardImage);
+        foreach (Image extraCard in extraCardImages)
+            if (extraCard != null) AddUnseenCardSparkles(extraCard);
+
+        unseenCardSparkleRoutine = StartCoroutine(AnimateUnseenCardSparkles());
+    }
+
+    private void AddUnseenCardSparkles(Image targetCard)
+    {
+
         Vector2[] anchors =
         {
             new Vector2(0.08f, 0.87f), new Vector2(0.92f, 0.76f),
@@ -1051,13 +1115,13 @@ public class HotSeatSetupUI : MonoBehaviour
         };
         float[] relativeSizes = { 0.32f, 0.18f, 0.15f, 0.23f,
             0.25f, 0.29f, 0.16f, 0.20f, 0.30f, 0.21f, 0.13f, 0.16f };
-        float cardWidth = Mathf.Max(1f, cardImage.rectTransform.rect.width);
+        float cardWidth = Mathf.Max(1f, targetCard.rectTransform.rect.width);
 
         for (int i = 0; i < anchors.Length; i++)
         {
             GameObject sparkle = new GameObject(
                 "UnseenCardSparkle", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-            sparkle.transform.SetParent(cardImage.transform, false);
+            sparkle.transform.SetParent(targetCard.transform, false);
             RectTransform rect = sparkle.GetComponent<RectTransform>();
             rect.anchorMin = rect.anchorMax = anchors[i];
             float size = cardWidth * relativeSizes[i];
@@ -1072,7 +1136,6 @@ public class HotSeatSetupUI : MonoBehaviour
             unseenCardSparkles.Add(sparkle);
         }
 
-        unseenCardSparkleRoutine = StartCoroutine(AnimateUnseenCardSparkles());
     }
 
     private void EnsureUnseenCardSparkleSprites()
@@ -1111,7 +1174,8 @@ public class HotSeatSetupUI : MonoBehaviour
                     elapsed / cycleDuration + i * 0.173f, 1f);
                 float glow = Mathf.Pow(Mathf.Sin(phase * Mathf.PI), 4f);
                 // Bottom accents stay quiet next to the reveal instructions.
-                float peakAlpha = i >= 10 ? 0.42f : i >= 4 ? 0.82f : 0.68f;
+                int cornerIndex = i % 12;
+                float peakAlpha = cornerIndex >= 10 ? 0.42f : cornerIndex >= 4 ? 0.82f : 0.68f;
                 Image image = sparkle.GetComponent<Image>();
                 if (image != null)
                     image.color = new Color(1f, 0.92f, 0.62f,
@@ -1248,6 +1312,7 @@ public class HotSeatSetupUI : MonoBehaviour
         bool canCheck,
         bool beginNewRound)
     {
+        players[currentPlayerIndex].HasSeenCurrentPresentation = false;
         currentPhase = HotSeatPhase.TurnLoop;
         cardVisible = false;
         waitingForCardReveal = true;
@@ -1261,6 +1326,15 @@ public class HotSeatSetupUI : MonoBehaviour
 
     private void BeginRoundPreview()
     {
+        // The previous round can finish via the last-player early return.
+        // A new preview must never inherit its disabled button/transition.
+        if (previewTransitionRoutine != null)
+        {
+            StopCoroutine(previewTransitionRoutine);
+            previewTransitionRoutine = null;
+        }
+        if (previewContinueButton != null)
+            previewContinueButton.interactable = true;
         currentPhase = HotSeatPhase.FirstCardPreview;
         cardVisible = false;
         previewCardSeen = false;
@@ -1673,7 +1747,7 @@ public class HotSeatSetupUI : MonoBehaviour
         cardVisible = false;
         cardPanel.SetActive(true);
 
-        currentPlayerNameText.text = "WYNIK RUNDY";
+        currentPlayerNameText.text = "SPRAWDZANIE UKŁADU";
         ShowCardSprite(
             null,
             "",
@@ -1683,7 +1757,7 @@ public class HotSeatSetupUI : MonoBehaviour
 
         string handId = FindHandId(declaredRank);
         ShowRoundCards();
-        cardImage.color = new Color(0.04f, 0.22f, 0.12f, 1f);
+        cardImage.color = new Color(0.018f, 0.085f, 0.060f, .97f);
 
         instructionText.text =
             "SPRAWDZANY UKŁAD:\n" +
@@ -2136,6 +2210,7 @@ public class HotSeatSetupUI : MonoBehaviour
         foreach (HotSeatPlayer player in players)
         {
             player.Cards.Clear();
+            player.HasSeenCurrentPresentation = false;
 
             if (player.Eliminated)
                 continue;

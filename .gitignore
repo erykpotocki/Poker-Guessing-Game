@@ -31,3 +31,5 @@ Assets/Photon/PhotonUnityNetworking/Resources/PhotonServerSettings.asset
 .DS_Store
 Thumbs.db
 Assets/Photon/PhotonRealtime/Resources/PhotonServerSettings.asset
+
+/Download/

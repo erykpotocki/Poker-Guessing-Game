@@ -1,4 +1,5 @@
 using Photon.Pun;
+using System.Collections;
 using Photon.Realtime;
 using TMPro;
 using UnityEngine;
@@ -137,9 +138,25 @@ public class JoinRoomUI : MonoBehaviourPunCallbacks
         }
 
         if (gameStarted)
-            HotSeatOrientationLock.LockLandscape();
+        {
+            MultiplayerLoadingTransition.Begin();
+            StartCoroutine(EnterStartedGame());
+        }
+        else SceneManager.LoadScene(lobbySceneName);
+    }
 
-        SceneManager.LoadScene(gameStarted ? gameSceneName : lobbySceneName);
+    private IEnumerator EnterStartedGame()
+    {
+        yield return null;
+        if (!PhotonNetwork.InRoom)
+        {
+            MultiplayerLoadingTransition.Finish();
+            HotSeatOrientationLock.LockPortrait();
+            yield break;
+        }
+        // PUN may already be loading the host's scene after the join response.
+        if (PhotonNetwork.IsMessageQueueRunning)
+            PhotonNetwork.LoadLevel(gameSceneName);
     }
 
     public override void OnJoinRoomFailed(short returnCode, string message)

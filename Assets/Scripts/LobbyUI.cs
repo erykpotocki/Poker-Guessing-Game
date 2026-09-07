@@ -10,12 +10,42 @@ public class LobbyUI : MonoBehaviourPunCallbacks
     [SerializeField] private TMP_Text gameModeText;
     private Coroutine copyFeedbackRoutine;
     private string roomCode;
+    private TMP_Text playerCountText;
+    private LobbyPlayersListUI playersList;
+    private readonly Vector3[] rowCorners = new Vector3[4];
 
     private void Start()
     {
         ConfigureCodeCopyButton();
         ConfigureHeaderSpacing();
+        playersList = FindFirstObjectByType<LobbyPlayersListUI>();
         RefreshUI();
+    }
+
+    private void LateUpdate()
+    {
+        RectTransform firstPlayer = playersList != null ? playersList.FirstPlayerRect : null;
+        if (firstPlayer == null) return;
+        // Resolve the actual first row after its layout group, for any number of
+        // players and any portrait aspect. The header follows the list, not the
+        // top edge/status bar of the phone.
+        firstPlayer.GetWorldCorners(rowCorners);
+        Vector3 firstRowTop = (rowCorners[1] + rowCorners[2]) * .5f;
+        PlaceAboveFirstPlayer(gameModeText, firstRowTop, 32f);
+        PlaceAboveFirstPlayer(playerCountText, firstRowTop, 96f);
+        PlaceAboveFirstPlayer(codeText, firstRowTop, 160f);
+    }
+
+    private static void PlaceAboveFirstPlayer(TMP_Text text, Vector3 rowTop, float gap)
+    {
+        if (text == null || !(text.rectTransform.parent is RectTransform parent)) return;
+        RectTransform rect = text.rectTransform;
+        Vector3 localTop = parent.InverseTransformPoint(rowTop);
+        rect.anchorMin = rect.anchorMax = new Vector2(.5f, .5f);
+        rect.pivot = new Vector2(.5f, 0f);
+        rect.anchoredPosition = new Vector2(localTop.x - parent.rect.center.x,
+            localTop.y - parent.rect.center.y + gap);
+        rect.localScale = Vector3.one;
     }
 
     public override void OnJoinedRoom()
@@ -56,10 +86,10 @@ public class LobbyUI : MonoBehaviourPunCallbacks
         if (codeText != null)
         {
             RectTransform rect = codeText.rectTransform;
-            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f);
-            rect.pivot = new Vector2(0.5f, 1f);
-            rect.anchoredPosition = new Vector2(0f, -192f);
-            rect.sizeDelta = new Vector2(680f, 170f);
+            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, .67f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.anchoredPosition = new Vector2(0f, 160f);
+            rect.sizeDelta = new Vector2(680f, 128f);
             codeText.alignment = TextAlignmentOptions.Top;
             codeText.fontSize = 68f;
             codeText.fontWeight = FontWeight.Bold;
@@ -69,9 +99,9 @@ public class LobbyUI : MonoBehaviourPunCallbacks
         if (gameModeText != null)
         {
             RectTransform rect = gameModeText.rectTransform;
-            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f);
-            rect.pivot = new Vector2(0.5f, 1f);
-            rect.anchoredPosition = new Vector2(0f, -424f);
+            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, .67f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.anchoredPosition = new Vector2(0f, 32f);
             rect.sizeDelta = new Vector2(680f, 54f);
             gameModeText.alignment = TextAlignmentOptions.Center;
             gameModeText.fontSize = 34f;
@@ -79,12 +109,13 @@ public class LobbyUI : MonoBehaviourPunCallbacks
         }
 
         TMP_Text playerCount = FindText("PlayerCountText");
+        playerCountText = playerCount;
         if (playerCount != null)
         {
             RectTransform rect = playerCount.rectTransform;
-            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f);
-            rect.pivot = new Vector2(0.5f, 1f);
-            rect.anchoredPosition = new Vector2(0f, -352f);
+            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, .67f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.anchoredPosition = new Vector2(0f, 96f);
             rect.sizeDelta = new Vector2(680f, 54f);
             playerCount.alignment = TextAlignmentOptions.Center;
             playerCount.fontSize = 32f;

@@ -18,6 +18,8 @@ public class LobbyPlayersListUI : MonoBehaviourPunCallbacks
 
     private const string AvatarKey = "avatarIndex";
     private readonly List<GameObject> spawned = new();
+    public RectTransform FirstPlayerRect => spawned.Count > 0 && spawned[0] != null
+        ? spawned[0].transform as RectTransform : null;
     private readonly Dictionary<int, GameObject> rowsByActorNumber = new();
     private float currentRowHeight = 108f;
     private float currentAvatarSize = 88f;
@@ -173,6 +175,7 @@ public class LobbyPlayersListUI : MonoBehaviourPunCallbacks
             avatarIndex = Mathf.Clamp(avatarIndex, 0, avatarDatabase.avatars.Length - 1);
             avatarImg.sprite = avatarDatabase.avatars[avatarIndex];
             avatarImg.preserveAspect = true;
+            AvatarCircleUtility.Apply(avatarImg);
 
             if (avatarImg.transform is RectTransform avatarRect)
                 avatarRect.sizeDelta = new Vector2(currentAvatarSize, currentAvatarSize);
@@ -313,10 +316,10 @@ public class LobbyPlayersListUI : MonoBehaviourPunCallbacks
         }
 
         // Reserve the middle of the lobby for participants; actions live below.
-        rect.anchorMin = new Vector2(0.5f, 0.36f);
-        rect.anchorMax = new Vector2(0.5f, 0.76f);
+        rect.anchorMin = new Vector2(0.5f, 0.27f);
+        rect.anchorMax = new Vector2(0.5f, 0.67f);
         rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.anchoredPosition = new Vector2(0f, -64f);
+        rect.anchoredPosition = new Vector2(0f, -18f);
         rect.sizeDelta = new Vector2(600f, 0f);
         ContentSizeFitter fitter = container.GetComponent<ContentSizeFitter>();
         if (fitter != null)

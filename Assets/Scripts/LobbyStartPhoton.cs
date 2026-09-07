@@ -1,4 +1,5 @@
 using ExitGames.Client.Photon;
+using IEnumerator = System.Collections.IEnumerator;
 using UnityEngine;
 using UnityEngine.UI;
 using Photon.Pun;
@@ -11,6 +12,7 @@ public class LobbyStartPhoton : MonoBehaviourPunCallbacks
     [SerializeField] private int minPlayers = 2;
 
     private const string GameStartedKey = "gameStarted";
+    private bool startingGame;
     public Button StartButton => startButton;
 
     private void Awake()
@@ -28,6 +30,11 @@ public class LobbyStartPhoton : MonoBehaviourPunCallbacks
     }
 
     public override void OnJoinedRoom() => RefreshStartButton();
+    public override void OnDisconnected(DisconnectCause cause)
+    {
+        startingGame = false;
+        RefreshStartButton();
+    }
     public override void OnPlayerEnteredRoom(Player newPlayer) => RefreshStartButton();
     public override void OnPlayerLeftRoom(Player otherPlayer) => RefreshStartButton();
     public override void OnMasterClientSwitched(Player newMasterClient) => RefreshStartButton();
@@ -44,7 +51,8 @@ public class LobbyStartPhoton : MonoBehaviourPunCallbacks
             propertiesThatChanged.TryGetValue(GameStartedKey, out object value) &&
             value is bool started && started)
         {
-            HotSeatOrientationLock.LockLandscape();
+            startingGame = true;
+            MultiplayerLoadingTransition.Begin();
         }
     }
 
@@ -57,20 +65,45 @@ public class LobbyStartPhoton : MonoBehaviourPunCallbacks
             ? PhotonNetwork.CurrentRoom.PlayerCount + LobbyBotRegistry.GetBots().Count
             : 0;
 
-        startButton.interactable = isMaster && (count >= minPlayers);
+        startButton.interactable = !startingGame && isMaster && (count >= minPlayers);
     }
 
     public void OnClickStart()
     {
+        if (startingGame) return;
         if (!PhotonNetwork.IsMasterClient) return;
         if (PhotonNetwork.CurrentRoom == null) return;
         if (PhotonNetwork.CurrentRoom.PlayerCount + LobbyBotRegistry.GetBots().Count < minPlayers) return;
 
+        startingGame = true;
+        RefreshStartButton();
+        MultiplayerLoadingTransition.Begin();
+
         Hashtable roomProps = new Hashtable();
         roomProps[GameStartedKey] = true;
+        roomProps["rewardStartedMs"] = PhotonNetwork.ServerTimestamp;
+        roomProps["rewardBots"] = LobbyBotRegistry.GetBots().Count;
+        var rewardActors = new System.Collections.Generic.List<int>();
+        foreach (var player in PhotonNetwork.PlayerList)
+            if (!player.IsInactive) rewardActors.Add(player.ActorNumber);
+        roomProps["rewardActors"] = rewardActors.ToArray();
         PhotonNetwork.CurrentRoom.SetCustomProperties(roomProps);
 
-        HotSeatOrientationLock.LockLandscape();
+        StartCoroutine(LoadGameAfterShowingLoading());
+    }
+
+    private IEnumerator LoadGameAfterShowingLoading()
+    {
+        // Let the landscape loading screen render before Photon starts loading.
+        yield return null;
+        if (!PhotonNetwork.InRoom || !PhotonNetwork.IsMasterClient)
+        {
+            startingGame = false;
+            MultiplayerLoadingTransition.Finish();
+            HotSeatOrientationLock.LockPortrait();
+            RefreshStartButton();
+            yield break;
+        }
         PhotonNetwork.LoadLevel(gameSceneName);
     }
 }

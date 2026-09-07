@@ -249,13 +249,8 @@ public class FakePlayers : MonoBehaviourPunCallbacks
             return;
 
         RectTransform startRect = startButton.transform as RectTransform;
-        if (startRect != null)
-        {
-            startRect.anchorMin = startRect.anchorMax = new Vector2(0.5f, 0f);
-            startRect.pivot = new Vector2(0.5f, 0f);
-            startRect.anchoredPosition = new Vector2(180f, 54f);
-            startRect.sizeDelta = new Vector2(330f, 92f);
-        }
+        // BackToMenu owns the shared START/COFNIJ row, including Safe Area.
+        // Creating a bot button must not reposition the original START button.
 
         addBotButton = Instantiate(startButton, startButton.transform.parent);
         addBotButton.name = "AddTestBotButton";

@@ -65,15 +65,26 @@ public static class PlayerProfileService
     }
     public static int AvatarIndex
     {
-        get { string id = Data.Profile.SelectedAvatarId; return id != null && id.StartsWith("avatar_") && int.TryParse(id.Substring(7),out int index) ? Mathf.Max(0,index) : 0; }
+        get {
+            string id = Data.Profile.SelectedAvatarId;
+            if (id != null && id.StartsWith("avatar_") && int.TryParse(id.Substring(7),out int index)) return Mathf.Max(0,index);
+            AvatarDatabase db = Resources.Load<AvatarDatabase>("ProfileAvatars");
+            if (db != null && db.avatars != null)
+                for (int i=0;i<db.avatars.Length;i++) if (AvatarId(i,db.avatars[i]) == id) return i;
+            return 0;
+        }
     }
-    public static bool CompleteMatch(string id,bool won)
+    public static string AvatarId(int index, Sprite sprite) => index < 10 ? "avatar_"+index : "download:"+sprite.name;
+    public static bool ShopAvailable => false;
+    public static bool CompleteMatch(string id,bool won,int bots=0,int humans=1,int durationSeconds=0)
     {
-        bool completed = ProgressionRules.CompleteMatch(Data,id,won,DateTime.UtcNow);
+        if ((id??"").StartsWith("hotseat:",StringComparison.OrdinalIgnoreCase)) return false;
+        int minutes = Mathf.Clamp(durationSeconds / 60,0,20);
+        int coins = Mathf.Clamp(10 + Mathf.Clamp(bots,0,5)*10 + minutes*7,10,200);
+        int xp = Mathf.Clamp(15 + Mathf.Clamp(bots,0,5)*5 + minutes*3 + (won?10:0),15,100);
+        bool completed = ProgressionRules.CompleteMatch(Data,id,won,DateTime.UtcNow,coins,xp,humans>=2);
         if (completed)
         {
-            if (!(id??"").StartsWith("hotseat:",StringComparison.OrdinalIgnoreCase) && StableDrop(id,10)==0)
-                Data.Wallet.RewardCurrency++;
             Save();
         }
         return completed;
@@ -90,6 +101,7 @@ public static class PlayerProfileService
     }
     public static bool BuyWithDiamonds(string category,string id,int price,string title)
     {
+        if (!ShopAvailable) return false;
         if (price < 0 || Data.Wallet.RewardCurrency < price) return false;
         bool owned = category == "avatar" ? Data.Inventory.OwnedAvatars.Contains(id) :
             category == "back" ? Data.Inventory.OwnedCardBacks.Contains(id) : Data.Inventory.OwnedFrames.Contains(id);
@@ -123,23 +135,68 @@ public static class PlayerProfileService
     {
         get
         {
-            long ticks = Data.Wheel.NextFreeUtcTicks - DateTime.UtcNow.Ticks;
+            DateTime now = DateTime.UtcNow;
+            ClampTestSpinCooldown(now);
+            long ticks = Data.Wheel.NextFreeUtcTicks - now.Ticks;
             return ticks > 0 ? TimeSpan.FromTicks(ticks) : TimeSpan.Zero;
         }
     }
     public static bool CanSpin => SpinRemaining <= TimeSpan.Zero;
-    public static string Spin()
+    public static string Spin() => Spin(out _);
+    public static string Spin(out int sector)
     {
+        sector = -1;
         DateTime now = DateTime.UtcNow;
+        ClampTestSpinCooldown(now);
         if (Data.Wheel.NextFreeUtcTicks > now.Ticks) return null;
-        Data.Wheel.FreeUsed = false;
-        string reward = ProgressionRules.Spin(Data,UnityEngine.Random.Range(0,1000),now);
+        // Clockwise from the top of the supplied wheel: ?, diamond, diamond
+        // bag, gold, ?, diamond, gold bag, gold. One draw drives money AND art.
+        sector = UnityEngine.Random.Range(0,8);
+        string reward;
+        if (sector == 0 || sector == 4)
+        {
+            var available = new System.Collections.Generic.List<Sprite>();
+            foreach (Sprite sprite in Resources.LoadAll<Sprite>("ShopAvatars"))
+                if (!Data.Inventory.OwnedAvatars.Contains("download:"+sprite.name)) available.Add(sprite);
+            if (available.Count > 0)
+            {
+                Sprite sprite = available[UnityEngine.Random.Range(0,available.Count)];
+                ProgressionRules.Unlock(Data,"avatar","download:"+sprite.name,"ODBLOKOWANO NOWY AVATAR");
+                reward = "nowy avatar — znajdziesz go w MOIM PROFILU";
+            }
+            else
+            {
+                int amount = UnityEngine.Random.Range(1,4);
+                Data.Wallet.RewardCurrency += amount;
+                reward = amount+" diamentów (masz już wszystkie avatary)";
+            }
+        }
+        else if (sector == 1 || sector == 5 || sector == 2)
+        {
+            int amount = sector == 2 ? UnityEngine.Random.Range(4,7) : UnityEngine.Random.Range(1,4);
+            Data.Wallet.RewardCurrency += amount; reward = amount+" diamentów";
+        }
+        else
+        {
+            int amount = sector == 6 ? UnityEngine.Random.Range(51,100) : UnityEngine.Random.Range(10,51);
+            Data.Wallet.Coins += amount; reward = amount+" złota";
+        }
+        Data.Statistics.Spins++;
+        Data.Wheel.FreeUsed = true;
         if (reward != null)
         {
-            Data.Wheel.NextFreeUtcTicks = now.AddHours(1).Ticks;
+            // Temporary tuning value for rapid testing of the reward wheel.
+            Data.Wheel.NextFreeUtcTicks = now.AddMinutes(1).Ticks;
             Save();
         }
         return reward;
+    }
+    private static void ClampTestSpinCooldown(DateTime now)
+    {
+        long testMaximum = now.AddMinutes(1).Ticks;
+        if (Data.Wheel.NextFreeUtcTicks <= testMaximum) return;
+        Data.Wheel.NextFreeUtcTicks = testMaximum;
+        Save();
     }
     public static bool ClaimMission(bool weekly,string kind) { bool result = ProgressionRules.ClaimMission(Data,weekly,kind,DateTime.UtcNow); if (result) Save(); return result; }
     private static bool adInFlight;

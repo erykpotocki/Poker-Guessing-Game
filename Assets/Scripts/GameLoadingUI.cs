@@ -47,7 +47,13 @@ public class GameLoadingUI : MonoBehaviour
         stage = message;
     }
 
-    private void Start() => ShowLoading();
+    // GameLoadSync controls the scene panel. A transition panel can already be
+    // visible before the Game scene loads, so Start must not reveal a duplicate.
+    public void InitializeStandalone(GameObject panel, TMP_Text text)
+    {
+        loadingPanel = panel;
+        loadingText = text;
+    }
 
     public void ShowLoading(string message = "")
     {
@@ -59,7 +65,9 @@ public class GameLoadingUI : MonoBehaviour
         {
             StartCoroutine(LoadArtwork());
             elapsed = 0f;
+            targetProgress = displayedProgress = 0f;
         }
+        if (!string.IsNullOrEmpty(message)) stage = message;
         showing = true;
     }
 

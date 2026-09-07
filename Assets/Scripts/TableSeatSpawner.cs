@@ -308,6 +308,7 @@ public class TableSeatSpawner : MonoBehaviour
             Mathf.Cos(angleRad) * radiusX,
             Mathf.Sin(angleRad) * radiusY
         );
+        pos = MoveLeftEdgeSeatOutward(pos);
 
         GameObject seatGO = Instantiate(seatPrefab, tableCenter.parent);
         seatGO.name = $"Seat_{seatIndex}_{p.ActorNumber}_{p.NickName}";
@@ -373,10 +374,7 @@ public class TableSeatSpawner : MonoBehaviour
             Mathf.Sin(angleRad) * radiusY
         );
 
-        // Molek's authored avatar was visibly outside the left table edge at
-        // the six-seat layout; keep the seat on the felt with a small left nudge.
-        if (bot.Name != null && bot.Name.IndexOf("Molek", StringComparison.OrdinalIgnoreCase) >= 0)
-            pos.x -= 28f;
+        pos = MoveLeftEdgeSeatOutward(pos);
 
         GameObject seatGO = Instantiate(seatPrefab, tableCenter.parent);
         seatGO.name = $"Seat_{seatIndex}_{bot.ActorNumber}_{bot.Name}";
@@ -400,6 +398,15 @@ public class TableSeatSpawner : MonoBehaviour
 
         if (cardDealTest != null)
             cardDealTest.SetSeatOccupant(seatRT, bot.ActorNumber);
+    }
+
+    // Seat rotation is local, therefore any human or bot can occupy the
+    // far-left place. Move it by position only, never by nickname.
+    private Vector2 MoveLeftEdgeSeatOutward(Vector2 position)
+    {
+        if (position.x < -radiusX * 0.55f)
+            position.x -= 150f;
+        return position;
     }
 
     private void SpawnDealerSeat(float angleDeg)

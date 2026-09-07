@@ -44,7 +44,7 @@ public class HotSeatOrientationLock : MonoBehaviour
     private static void ApplyCurrentSceneOrientation()
     {
         Scene scene = SceneManager.GetActiveScene();
-        if (scene.name == "Game" || scene.name == "BootLoading") LockLandscape();
+        if (scene.name == "Game" || MultiplayerLoadingTransition.IsActive) LockLandscape();
         else LockPortrait();
     }
 
@@ -52,30 +52,31 @@ public class HotSeatOrientationLock : MonoBehaviour
     {
 #if UNITY_WEBGL && !UNITY_EDITOR
         PokerSetOrientation(0);
-#endif
-        Screen.orientation = ScreenOrientation.Portrait;
-
+#else
         Screen.autorotateToPortrait = true;
         Screen.autorotateToPortraitUpsideDown = false;
         Screen.autorotateToLandscapeLeft = false;
         Screen.autorotateToLandscapeRight = false;
+        Screen.orientation = ScreenOrientation.Portrait;
+#endif
     }
 
     public static void LockLandscape()
     {
 #if UNITY_WEBGL && !UNITY_EDITOR
         PokerSetOrientation(1);
-#endif
+#else
         Screen.autorotateToPortrait = false;
         Screen.autorotateToPortraitUpsideDown = false;
         Screen.autorotateToLandscapeLeft = true;
         Screen.autorotateToLandscapeRight = true;
         Screen.orientation = ScreenOrientation.LandscapeLeft;
+#endif
     }
 
     private static void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        bool landscape = scene.name == "Game" || scene.name == "BootLoading";
+        bool landscape = scene.name == "Game";
         if (landscape)
             LockLandscape();
         else

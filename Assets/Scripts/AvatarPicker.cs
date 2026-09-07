@@ -34,6 +34,9 @@ public class AvatarPicker : MonoBehaviour
         PlayerPrefs.Save();
 
         if (avatarPreview != null)
+        {
             avatarPreview.sprite = avatarDatabase.avatars[idx];
+            AvatarCircleUtility.Apply(avatarPreview);
+        }
     }
 }

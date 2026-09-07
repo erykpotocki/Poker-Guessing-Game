@@ -102,6 +102,7 @@ public class HotSeatHandRankPanelUI : MonoBehaviour
     private Button selectedOptionButton;
     private string selectedRankText;
     private string currentBidText;
+    private GameObject currentNavigationList;
 
     private bool canCheckCurrentTurn;
     private bool inputLocked;
@@ -411,9 +412,10 @@ public class HotSeatHandRankPanelUI : MonoBehaviour
             ShowPokerOptions
         );
 
-        AddClick(rankBackButton, ShowCategories);
-        AddClick(fullGroupBackButton, ShowCategories);
-        AddClick(fullDetailBackButton, ShowFullGroups);
+        // Navigation is provided by the single footer button, not list rows.
+        if (rankBackButton != null) rankBackButton.gameObject.SetActive(false);
+        if (fullGroupBackButton != null) fullGroupBackButton.gameObject.SetActive(false);
+        if (fullDetailBackButton != null) fullDetailBackButton.gameObject.SetActive(false);
 
         AddClick(
             fullGroupButton999,
@@ -538,7 +540,8 @@ public class HotSeatHandRankPanelUI : MonoBehaviour
         {
             rankScrollViewRect.anchorMin = Vector2.zero;
             rankScrollViewRect.anchorMax = Vector2.one;
-            rankScrollViewRect.offsetMin = new Vector2(52f, 328f);
+            // Shared footer ends at 176; leave 84 units above both actions.
+            rankScrollViewRect.offsetMin = new Vector2(52f, 260f);
             rankScrollViewRect.offsetMax = new Vector2(-52f, -142f);
             rankScrollViewRect.localScale = Vector3.one;
             Image scrollHitArea = rankScrollViewRect.GetComponent<Image>();
@@ -590,13 +593,18 @@ public class HotSeatHandRankPanelUI : MonoBehaviour
 
         if (actionButton != null && actionButton.transform is RectTransform actionRect)
         {
-            actionRect.anchorMin = new Vector2(0f, 0f);
+            // The legacy prefab's VerticalLayoutGroup forces its background to
+            // the child's preferred height (60), ignoring the 112-high footer.
+            // This action has one stretched background, not a vertical list.
+            LayoutGroup actionLayout = actionButton.GetComponent<LayoutGroup>();
+            if (actionLayout != null) actionLayout.enabled = false;
+            actionRect.anchorMin = new Vector2(0.5f, 0f);
             actionRect.anchorMax = new Vector2(1f, 0f);
             actionRect.pivot = new Vector2(0.5f, 0f);
-            actionRect.anchoredPosition = new Vector2(0f, 44f);
-            actionRect.sizeDelta = new Vector2(-104f, 104f);
+            actionRect.offsetMin = new Vector2(18f, 64f);
+            actionRect.offsetMax = new Vector2(-52f, 176f);
             actionRect.localScale = Vector3.one;
-            if (actionButtonVisual != null)
+            if (actionButtonVisual != null && actionButtonVisual.rectTransform != actionRect)
             {
                 RectTransform visualRect = actionButtonVisual.rectTransform;
                 visualRect.anchorMin = Vector2.zero;
@@ -612,16 +620,29 @@ public class HotSeatHandRankPanelUI : MonoBehaviour
                 labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
                 labelRect.localScale = Vector3.one;
                 actionButtonText.alignment = TextAlignmentOptions.Center;
+                actionButtonText.enableAutoSizing = true;
+                actionButtonText.fontSizeMin = 24f;
+                actionButtonText.fontSizeMax = 38f;
+                actionButtonText.textWrappingMode = TextWrappingModes.NoWrap;
             }
         }
 
         if (cancelSelectionButton != null && cancelSelectionButton.transform is RectTransform cancelRect)
         {
             cancelRect.anchorMin = new Vector2(0f, 0f);
-            cancelRect.anchorMax = new Vector2(1f, 0f);
+            cancelRect.anchorMax = new Vector2(0.5f, 0f);
             cancelRect.pivot = new Vector2(0.5f, 0f);
-            cancelRect.anchoredPosition = new Vector2(0f, 176f);
-            cancelRect.sizeDelta = new Vector2(-104f, 104f);
+            cancelRect.offsetMin = new Vector2(52f, 64f);
+            cancelRect.offsetMax = new Vector2(-18f, 176f);
+            cancelRect.localScale = Vector3.one;
+            TMP_Text cancelLabel = cancelSelectionButton.GetComponentInChildren<TMP_Text>(true);
+            if (cancelLabel != null)
+            {
+                cancelLabel.enableAutoSizing = true;
+                cancelLabel.fontSizeMin = 24f;
+                cancelLabel.fontSizeMax = 38f;
+                cancelLabel.textWrappingMode = TextWrappingModes.NoWrap;
+            }
         }
 
         ConfigureOptionButtons(categoryList);
@@ -686,6 +707,17 @@ public class HotSeatHandRankPanelUI : MonoBehaviour
     {
         if (inputLocked)
             return;
+
+        if (currentNavigationList == fullDetailList && fullDetailList != null)
+        {
+            ShowFullGroups();
+            return;
+        }
+        if (currentNavigationList != categoryList)
+        {
+            ShowCategories();
+            return;
+        }
 
         Close();
         CancelChosen?.Invoke();
@@ -905,7 +937,7 @@ public class HotSeatHandRankPanelUI : MonoBehaviour
             GetButton(listObject, "BackButton");
 
         if (backButton != null)
-            backButton.gameObject.SetActive(true);
+            backButton.gameObject.SetActive(false);
     }
 
     private void SelectRankOption(
@@ -1058,8 +1090,8 @@ public class HotSeatHandRankPanelUI : MonoBehaviour
         {
             actionButtonText.text =
                 hasSelection
-                    ? "Przebij"
-                    : "Sprawdzam";
+                    ? "PRZEBIJ"
+                    : "SPRAWDZAM";
         }
 
         if (actionButtonVisual != null)
@@ -1248,6 +1280,13 @@ public class HotSeatHandRankPanelUI : MonoBehaviour
     private void SetOnlyOneListActive(
         GameObject target)
     {
+        currentNavigationList = target;
+        SetButtonLabel(cancelSelectionButton,
+            target == categoryList ? "WRÓĆ DO KARTY" : "WSTECZ");
+        if (rankBackButton != null) rankBackButton.gameObject.SetActive(false);
+        if (fullGroupBackButton != null) fullGroupBackButton.gameObject.SetActive(false);
+        if (fullDetailBackButton != null) fullDetailBackButton.gameObject.SetActive(false);
+
         if (categoryList != null)
             categoryList.SetActive(
                 target == categoryList

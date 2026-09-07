@@ -95,7 +95,16 @@ public class BackToMenu : MonoBehaviourPunCallbacks
                     startRect.anchorMin = startRect.anchorMax = new Vector2(0.5f, 0f);
                     startRect.pivot = new Vector2(0.5f, 0f);
                     startRect.anchoredPosition = new Vector2(180f, bottomInset + 54f);
-                    startRect.sizeDelta = new Vector2(330f, 92f);
+                    startRect.sizeDelta = buttonRect.sizeDelta;
+                    startRect.localScale = Vector3.one;
+                    TMP_Text startLabel = startRect.GetComponentInChildren<TMP_Text>(true);
+                    if (startLabel != null)
+                    {
+                        startLabel.text = "START";
+                        startLabel.alignment = TextAlignmentOptions.Center;
+                        startLabel.textWrappingMode = TextWrappingModes.NoWrap;
+                        startLabel.overflowMode = TextOverflowModes.Ellipsis;
+                    }
                 }
             }
 

@@ -106,14 +106,16 @@ namespace PokerProfile
             if (string.IsNullOrWhiteSpace(id) || data.Receipts.Contains(id)) return false;
             data.Receipts.Add(id); return true;
         }
-        public static bool CompleteMatch(PlayerSave data,string matchId,bool won,DateTime utc)
+        public static bool CompleteMatch(PlayerSave data,string matchId,bool won,DateTime utc,int coins=20,int xp=25,bool diamond=false)
         {
+            if ((matchId??"").StartsWith("hotseat:",StringComparison.OrdinalIgnoreCase)) return false;
             RefreshPeriods(data,utc);
             if (!Receipt(data,"match:"+matchId)) return false;
             data.Statistics.GamesPlayed++;
             if (won) data.Statistics.GamesWon++;
-            data.Wallet.Coins += won ? 50 : 20;
-            data.Progression.Experience += won ? 50 : 25;
+            data.Wallet.Coins += Math.Max(0,Math.Min(200,coins));
+            data.Progression.Experience += Math.Max(0,Math.Min(100,xp));
+            if (diamond) data.Wallet.RewardCurrency++;
             Evaluate(data);
             return true;
         }

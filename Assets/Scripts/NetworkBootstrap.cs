@@ -14,6 +14,7 @@ public class NetworkBootstrap : MonoBehaviourPunCallbacks
     private bool shouldRecoverRoom;
     private bool rejoinAfterMasterConnection;
     private bool recoveryRunning;
+    private bool joinedRoomThisSession;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void EnsureBootstrapExists()
@@ -80,6 +81,7 @@ public class NetworkBootstrap : MonoBehaviourPunCallbacks
 
     public override void OnJoinedRoom()
     {
+        joinedRoomThisSession = true;
         shouldRecoverRoom = false;
         rejoinAfterMasterConnection = false;
         recoveryRunning = false;
@@ -103,6 +105,7 @@ public class NetworkBootstrap : MonoBehaviourPunCallbacks
     {
         // Explicit leave (including a host kick) must cancel background recovery.
         StopAllCoroutines();
+        joinedRoomThisSession = false;
         shouldRecoverRoom = rejoinAfterMasterConnection = recoveryRunning = false;
         PlayerPrefs.SetInt(ResumePendingPrefsKey, 0);
         PlayerPrefs.DeleteKey(LastRoomCodePrefsKey);
@@ -159,7 +162,9 @@ public class NetworkBootstrap : MonoBehaviourPunCallbacks
 
     private void RequestRoomRecovery()
     {
-        if (recoveryRunning)
+        // A stale saved room must not rotate a fresh app launch into a match.
+        // Automatic recovery is only for a room entered during this app session.
+        if (!joinedRoomThisSession || recoveryRunning)
             return;
 
         recoveryRunning = true;

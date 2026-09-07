@@ -21,11 +21,9 @@ public class GameLoadSync : MonoBehaviourPunCallbacks
 
     private void Start()
     {
-        roomReady = false;
-        loadingFinished = false;
-        minimumTimePassed = false;
-        loadHandshakeStarted = false;
-
+        // OnJoinedRoom may run between OnEnable and Start. Do not reset a
+        // handshake already begun by that callback.
+        loadingUI = MultiplayerLoadingTransition.UseForGame(loadingUI);
         if (loadingUI != null)
             loadingUI.ShowLoading("Ładowanie graczy...");
 
@@ -50,7 +48,7 @@ public class GameLoadSync : MonoBehaviourPunCallbacks
 
         while (!PhotonNetwork.InRoom && timer < waitForRoomTimeout)
         {
-            timer += Time.deltaTime;
+            timer += Time.unscaledDeltaTime;
             yield return null;
         }
 
@@ -113,7 +111,7 @@ public class GameLoadSync : MonoBehaviourPunCallbacks
 
     private IEnumerator MinimumLoadingTimer()
     {
-        yield return new WaitForSeconds(minimumLoadingTime);
+        yield return new WaitForSecondsRealtime(Mathf.Max(5f, minimumLoadingTime));
         minimumTimePassed = true;
         TryHideLoading();
     }
@@ -125,9 +123,8 @@ public class GameLoadSync : MonoBehaviourPunCallbacks
 
     public override void OnRoomPropertiesUpdate(Hashtable changedProps)
     {
-        if (changedProps.ContainsKey(RoomCanStartKey))
+        if (changedProps != null && changedProps.ContainsKey(RoomCanStartKey))
         {
-            roomReady = (bool)changedProps[RoomCanStartKey];
             TryHideLoading();
         }
     }
@@ -171,6 +168,14 @@ public class GameLoadSync : MonoBehaviourPunCallbacks
 
     private void TryHideLoading()
     {
+        if (loadingFinished || !loadHandshakeStarted || !PhotonNetwork.InRoom)
+            return;
+
+        // A late joiner receives existing room properties, not necessarily a new
+        // gameCanStart notification. Read current state rather than waiting for
+        // an event that may already have happened before this scene was loaded.
+        roomReady = PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(
+            RoomCanStartKey, out object readyValue) && readyValue is bool ready && ready;
         if (!minimumTimePassed || !roomReady || loadingFinished)
             return;
 
@@ -178,6 +183,7 @@ public class GameLoadSync : MonoBehaviourPunCallbacks
 
         if (loadingUI != null)
             loadingUI.HideLoading();
+        MultiplayerLoadingTransition.Finish();
 
         StartCoroutine(StartDealAfterLoading());
     }

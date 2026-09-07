@@ -71,8 +71,6 @@ public class MainMenuUI : MonoBehaviour
             HidePreviewObject(rulesButton.gameObject);
             HidePreviewObject(settingsButton.gameObject);
             HidePreviewObject(shopButton.gameObject);
-            HidePreviewObject(profileButton.gameObject);
-            HidePreviewObject(spinButton.gameObject);
             HidePreviewObject(backButton.gameObject);
             HidePreviewObject(infoOverlay);
         }
@@ -161,15 +159,11 @@ public class MainMenuUI : MonoBehaviour
         secondaryButton = CreateMenuButton(
             "SecondaryModeButton", styleSource, new Vector2(95.2f, -170f), new Vector2(312f, 64f), true);
         rulesButton = CreateMenuButton(
-            "RulesButton", styleSource, new Vector2(14.6f, -310f), new Vector2(151f, 44f), false);
+            "RulesButton", styleSource, new Vector2(14.6f, -320f), new Vector2(151f, 44f), false);
         settingsButton = CreateMenuButton(
-            "SettingsButton", styleSource, new Vector2(175.8f, -310f), new Vector2(151f, 44f), false);
+            "SettingsButton", styleSource, new Vector2(175.8f, -320f), new Vector2(151f, 44f), false);
         shopButton = CreateMenuButton(
             "ShopButton", styleSource, new Vector2(95.2f, -250f), new Vector2(312f, 48f), false);
-        profileButton = CreateMenuButton(
-            "ProfileShortcut", styleSource, new Vector2(296f, -24f), new Vector2(58f, 58f), false);
-        spinButton = CreateMenuButton(
-            "SpinShortcut", styleSource, new Vector2(226f, -24f), new Vector2(58f, 58f), false);
         backButton = CreateMenuButton(
             "ModeBackButton", styleSource, new Vector2(95.2f, -250f), new Vector2(312f, 48f), false);
 
@@ -376,8 +370,6 @@ public class MainMenuUI : MonoBehaviour
         rulesButton.gameObject.SetActive(true);
         settingsButton.gameObject.SetActive(true);
         shopButton.gameObject.SetActive(true);
-        profileButton.gameObject.SetActive(false);
-        spinButton.gameObject.SetActive(false);
         backButton.gameObject.SetActive(false);
         ShowButtonsImmediately(primaryButton, secondaryButton, shopButton, rulesButton, settingsButton);
     }
@@ -393,8 +385,6 @@ public class MainMenuUI : MonoBehaviour
         rulesButton.gameObject.SetActive(false);
         settingsButton.gameObject.SetActive(false);
         shopButton.gameObject.SetActive(false);
-        profileButton.gameObject.SetActive(false);
-        spinButton.gameObject.SetActive(false);
         backButton.gameObject.SetActive(true);
         ShowButtonsImmediately(primaryButton, secondaryButton, backButton);
     }
@@ -524,11 +514,7 @@ public class MainMenuUI : MonoBehaviour
 
     public void GoHotSeat()
     {
-        Screen.orientation = ScreenOrientation.Portrait;
-        Screen.autorotateToPortrait = true;
-        Screen.autorotateToPortraitUpsideDown = false;
-        Screen.autorotateToLandscapeLeft = false;
-        Screen.autorotateToLandscapeRight = false;
+        HotSeatOrientationLock.LockPortrait();
         StartSceneTransition("Hot Seat");
     }
 
