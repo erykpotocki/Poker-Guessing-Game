@@ -16,33 +16,32 @@
     <title>Poker zgadywany</title>
     <style>
       *, *::before, *::after { box-sizing: border-box; }
-      html, body { margin: 0; width: 100%; height: 100%; min-height: 100%; overflow: hidden; background: #020b06; color: #fff; font-family: Arial, sans-serif; }
+      html, body { margin: 0; width: 100%; height: 100%; min-height: 100%; overflow: hidden; background: #000; color: #fff; font-family: Arial, sans-serif; overscroll-behavior: none; }
       body { position: fixed; inset: 0; display: grid; place-items: center; }
-      #unity-container { position: absolute; inset: 0; margin: 0; width: 100%; height: 100%; background: #020b06; }
-      #unity-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; background: #020b06; }
-      #loading-screen { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; padding: max(20px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); background: linear-gradient(#0004, #0005), url('boot-background.png?v=6') center / cover no-repeat, #020b06; text-align: center; opacity: 1; transition: opacity .35s ease; }
+      #unity-container { --view-width: 100vw; --view-height: 100vh; position: absolute; left: 50%; top: 50%; margin: 0; width: 100%; height: 100%; transform: translate(-50%, -50%); transform-origin: center; overflow: hidden; background: #020b06; }
+      #unity-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; background: #020b06; touch-action: none; }
+      #loading-screen { position: absolute; inset: 0; z-index: 4; display: grid; place-items: center; padding: 20px 18px; background: linear-gradient(#0004, #0005), url('boot-background.png?v=6') center / cover no-repeat, #020b06; text-align: center; opacity: 1; transition: opacity .35s ease; }
       #loading-screen.hidden { opacity: 0; pointer-events: none; }
       #loading-screen.ready { cursor: pointer; }
       #loading-screen.ready #loading-logo,
       #loading-screen.ready #loading-chip { animation-play-state: paused; }
       #loading-screen.ready #loading-track { display: none; }
       #loading-screen.ready #loading-status { margin: 0; animation: continue-pulse 1.8s ease-in-out infinite; }
-      #loading-content { width: min(92vw, 470px); display: grid; justify-items: center; }
-      #loading-logo { display: block; width: 100%; height: auto; margin-bottom: clamp(34px, 8vh, 74px); animation: loading-pulse 4.5s ease-in-out infinite; }
-      #loading-chip { display: block; width: clamp(86px, 25vw, 130px); height: auto; margin-bottom: 28px; animation: loading-spin 5.1s linear infinite; }
-      #loading-status { margin: 0 0 16px; color: #fff8de; font-size: clamp(13px, 3.8vw, 17px); font-weight: bold; letter-spacing: .08em; }
+      #loading-content { width: min(92%, 470px); display: grid; justify-items: center; }
+      #loading-logo { display: block; width: 100%; height: auto; margin-bottom: clamp(34px, calc(var(--view-height) * .08), 74px); animation: loading-pulse 4.5s ease-in-out infinite; }
+      #loading-chip { display: block; width: clamp(86px, calc(var(--view-width) * .25), 130px); height: auto; margin-bottom: 28px; animation: loading-spin 5.1s linear infinite; }
+      #loading-status { margin: 0 0 16px; color: #fff8de; font-size: clamp(13px, calc(var(--view-width) * .038), 17px); font-weight: bold; letter-spacing: .08em; }
       #loading-track { width: 100%; height: 14px; overflow: hidden; border: 1px solid #e6bd62; border-radius: 999px; background: #06190f; }
       #loading-progress { width: 0; height: 100%; background: linear-gradient(90deg, #9a6410, #f2c15c); transition: width .15s ease-out; }
-      @media (orientation: landscape) { #loading-content { width: min(80vw, 620px); grid-template-columns: 1fr 120px; gap: 14px 30px; } #loading-logo { margin: 0; max-height: 40vh; object-fit: contain; } #loading-chip { width: 90px; margin: 0; } #loading-status, #loading-track { grid-column: 1 / -1; } }
       @keyframes loading-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
       @keyframes loading-spin { to { transform: rotate(-360deg); } }
       @keyframes continue-pulse { 0%, 100% { opacity: .7; transform: scale(1); } 50% { opacity: 1; transform: scale(1.04); } }
       @media (prefers-reduced-motion: reduce) { #loading-logo, #loading-chip { animation: none; } }
-      #update-notice { position: fixed; inset: 0; z-index: 5; display: none; place-items: center; overflow-y: auto; padding: max(18px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); background: #020b06; }
+      #update-notice { position: absolute; inset: 0; z-index: 5; display: none; place-items: center; overflow-y: auto; padding: 18px 16px; background: #020b06; }
       #update-notice.visible { display: grid; }
-      #update-card { width: min(100%, 400px); max-height: calc(100dvh - 36px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); overflow-y: auto; border: 1px solid #e6bd62; border-radius: 18px; padding: clamp(20px, 6vw, 30px); color: #fff8de; background: linear-gradient(145deg, #0d4b2d, #062817); box-shadow: 0 18px 42px #000; text-align: center; }
-      #update-card h2 { margin: 0 0 14px; color: #f2c15c; font-size: clamp(24px, 7vw, 32px); line-height: 1.1; overflow-wrap: anywhere; }
-      #update-message { margin: 0 0 22px; font-size: clamp(16px, 4.5vw, 19px); font-weight: bold; line-height: 1.4; }
+      #update-card { width: min(100%, 400px); max-height: 100%; overflow-y: auto; border: 1px solid #e6bd62; border-radius: 18px; padding: clamp(20px, calc(var(--view-width) * .06), 30px); color: #fff8de; background: linear-gradient(145deg, #0d4b2d, #062817); box-shadow: 0 18px 42px #000; text-align: center; }
+      #update-card h2 { margin: 0 0 14px; color: #f2c15c; font-size: clamp(24px, calc(var(--view-width) * .07), 32px); line-height: 1.1; overflow-wrap: anywhere; }
+      #update-message { margin: 0 0 22px; font-size: clamp(16px, calc(var(--view-width) * .045), 19px); font-weight: bold; line-height: 1.4; }
       #update-close { width: 100%; border: 1px solid #f2c15c; border-radius: 10px; padding: 12px; color: #fff8de; background: #9a6410; font-weight: bold; font-size: 15px; }
     </style>
   </head>
