@@ -17,6 +17,23 @@ public class HotSeatHandEvaluatorTests
     }
 
     [Test]
+    public void TwoAcesAmongThreeCards_AreAPair_NotThreeOfAKind()
+    {
+        for(int first=0;first<4;first++)
+        for(int second=first+1;second<4;second++)
+        {
+            var cards=new List<CardSpriteEntry> {
+                Card((CardSuit)first,CardRank.Ace),
+                Card(CardSuit.Kier,CardRank.Queen),
+                Card((CardSuit)second,CardRank.Ace)
+            };
+            Assert.That(Evaluate("PAIR_A",cards),Is.True);
+            Assert.That(Evaluate("TRIPS_A",cards),Is.False);
+            Assert.That(Evaluate("PAIR_Q",cards),Is.False);
+        }
+    }
+
+    [Test]
     public void ThreeAces_AreRecognizedEvenWithExtraCards()
     {
         List<CardSpriteEntry> cards = new List<CardSpriteEntry>

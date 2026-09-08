@@ -50,5 +50,13 @@ public sealed class AuthorWatermark : MonoBehaviour
         rect.anchorMin=rect.anchorMax=new Vector2(.5f,0);rect.pivot=new Vector2(.5f,0);
         rect.offsetMin=rect.offsetMax=Vector2.zero;
         rect.anchoredPosition=new Vector2(0,4);rect.sizeDelta=new Vector2(320,22);
+        if(gameObject.scene.name=="Game")
+        {
+            float right=(Screen.width-Screen.safeArea.xMax)*root.rect.width/Screen.width;
+            float bottom=Screen.safeArea.yMin*root.rect.height/Screen.height;
+            rect.anchorMin=rect.anchorMax=new Vector2(1,0);rect.pivot=new Vector2(1,0);
+            rect.anchoredPosition=new Vector2(-right-48,bottom+12);
+            rect.sizeDelta=new Vector2(250,22);label.alignment=TextAlignmentOptions.BottomRight;
+        }
     }
 }

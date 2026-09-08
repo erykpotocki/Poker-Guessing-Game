@@ -397,8 +397,10 @@ public sealed class PokerButtonTheme : MonoBehaviour
 
     private static bool IsExcludedFromTheme(Button button)
     {
+        if(button.GetComponentInParent<PortraitMenuTopBar>()!=null)return true;
         string name = button.name.ToLowerInvariant();
-        if (name.StartsWith("utility")) return true;
+        if(name=="category" || name=="avatartile" || name=="frametile")return true;
+        if (name.StartsWith("utility") || name == "spinrewardoverlay") return true;
 
         if (name.Contains("removeplayer") ||
             name.Contains("delete") ||

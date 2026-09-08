@@ -4,11 +4,26 @@ using PokerProfile;
 
 public static class PlayerProfileService
 {
+#if UNITY_WEBGL && !UNITY_EDITOR
+    [System.Runtime.InteropServices.DllImport("__Internal")] private static extern string PokerLoadProfile();
+    [System.Runtime.InteropServices.DllImport("__Internal")] private static extern int PokerSaveProfile(string json);
+#endif
     private sealed class PrefsStore : IProfileStore
     {
-        public string Load() => PlayerPrefs.GetString("playerProfile.v1", "");
+        public string Load()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            string browserSave = PokerLoadProfile();
+            if (!string.IsNullOrEmpty(browserSave)) return browserSave;
+#endif
+            return PlayerPrefs.GetString("playerProfile.v1", "");
+        }
         public void Save(string json)
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Synchronous browser copy survives closing the tab before IndexedDB finishes.
+            if (PokerSaveProfile(json) == 0) Debug.LogWarning("Zapis przeglądarki niedostępny; używam zapisu Unity.");
+#endif
             PlayerPrefs.SetString("playerProfile.backup",PlayerPrefs.GetString("playerProfile.v1",""));
             PlayerPrefs.SetString("playerProfile.v1",json); PlayerPrefs.Save();
         }
@@ -16,6 +31,7 @@ public static class PlayerProfileService
     private static IProfileStore store = new PrefsStore();
     private static PlayerSave current;
     public static event Action Changed;
+    public static event Action PurchaseCompleted;
     public static PlayerSave Data
     {
         get
@@ -36,6 +52,13 @@ public static class PlayerProfileService
             current.Wallet ??= new Wallet();
             current.Statistics ??= new Statistics();
             current.Progression ??= new Progression();
+            if(current.Progression.CurveVersion==0)
+            {
+                long oldXp=Math.Max(0,current.Progression.Experience);
+                int oldLevel=1+(int)(oldXp/100);
+                current.Progression.Experience=Progression.Threshold(oldLevel)+(oldXp%100)*(100L+50L*(oldLevel-1))/100;
+                current.Progression.CurveVersion=1;
+            }
             current.Daily ??= new MissionPeriod();
             current.Weekly ??= new MissionPeriod();
             current.Wheel ??= new WheelState();
@@ -43,6 +66,10 @@ public static class PlayerProfileService
             current.Receipts ??= new System.Collections.Generic.List<string>();
             current.Opponents ??= new System.Collections.Generic.List<OpponentRecord>();
             current.PendingUnlocks ??= new System.Collections.Generic.List<PendingUnlock>();
+            // Old wheel rewards used the global presentation queue. Keep the
+            // owned items, but discard their duplicate notification on upgrade.
+            current.PendingUnlocks.RemoveAll(item => item.Category == "avatar" &&
+                (item.ItemId ?? "").StartsWith("download:") && string.IsNullOrEmpty(item.Source));
             for (int i = 0; i < 10; i++) ProgressionRules.Own(current.Inventory.OwnedAvatars,"avatar_"+i);
             ProgressionRules.RefreshPeriods(current,DateTime.UtcNow);
             return current;
@@ -107,8 +134,10 @@ public static class PlayerProfileService
             category == "back" ? Data.Inventory.OwnedCardBacks.Contains(id) : Data.Inventory.OwnedFrames.Contains(id);
         if (owned) return false;
         Data.Wallet.RewardCurrency -= price;
-        ProgressionRules.Unlock(Data,category,id,title);
-        Save(); return true;
+        ProgressionRules.Unlock(Data,category,id,title,"shop");
+        Save();
+        PurchaseCompleted?.Invoke();
+        return true;
     }
     public static void RecordOpponentMatch(string profileId,string nickname,bool localWon)
     {
@@ -145,6 +174,16 @@ public static class PlayerProfileService
     public static string Spin() => Spin(out _);
     public static string Spin(out int sector)
     {
+        return Spin(out sector, out _);
+    }
+    public static string DiamondAmount(int amount)
+    {
+        int last = amount % 10, lastTwo = amount % 100;
+        return amount + (amount == 1 ? " diament" : last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14) ? " diamenty" : " diamentów");
+    }
+    public static string Spin(out int sector, out Sprite wonAvatar)
+    {
+        wonAvatar = null;
         sector = -1;
         DateTime now = DateTime.UtcNow;
         ClampTestSpinCooldown(now);
@@ -161,20 +200,21 @@ public static class PlayerProfileService
             if (available.Count > 0)
             {
                 Sprite sprite = available[UnityEngine.Random.Range(0,available.Count)];
-                ProgressionRules.Unlock(Data,"avatar","download:"+sprite.name,"ODBLOKOWANO NOWY AVATAR");
-                reward = "nowy avatar — znajdziesz go w MOIM PROFILU";
+                ProgressionRules.Own(Data.Inventory.OwnedAvatars,"download:"+sprite.name);
+                wonAvatar = sprite;
+                reward = "Nowy avatar";
             }
             else
             {
                 int amount = UnityEngine.Random.Range(1,4);
                 Data.Wallet.RewardCurrency += amount;
-                reward = amount+" diamentów (masz już wszystkie avatary)";
+                reward = DiamondAmount(amount);
             }
         }
         else if (sector == 1 || sector == 5 || sector == 2)
         {
             int amount = sector == 2 ? UnityEngine.Random.Range(4,7) : UnityEngine.Random.Range(1,4);
-            Data.Wallet.RewardCurrency += amount; reward = amount+" diamentów";
+            Data.Wallet.RewardCurrency += amount; reward = DiamondAmount(amount);
         }
         else
         {

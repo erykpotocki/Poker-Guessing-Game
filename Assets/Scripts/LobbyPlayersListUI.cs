@@ -145,6 +145,7 @@ public class LobbyPlayersListUI : MonoBehaviourPunCallbacks
 
             iRow++;
         }
+        LayoutRebuilder.ForceRebuildLayoutImmediate(container as RectTransform);
     }
 
     private void SpawnRow(int actorNumber, int rowNumber, string displayName, int avatarIndex)
@@ -347,7 +348,7 @@ public class LobbyPlayersListUI : MonoBehaviourPunCallbacks
     private void ClearRows()
     {
         for (int i = 0; i < spawned.Count; i++)
-            if (spawned[i] != null) Destroy(spawned[i]);
+            if (spawned[i] != null){spawned[i].SetActive(false);Destroy(spawned[i]);}
         spawned.Clear();
         rowsByActorNumber.Clear();
     }

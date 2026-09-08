@@ -8,6 +8,9 @@ public sealed class ShopUI : MonoBehaviour
     private RectTransform panel,content;
     private Canvas owner;
     private string tab="online";
+    private void OnEnable() => PlayerProfileService.PurchaseCompleted += PresentPurchase;
+    private void OnDisable() => PlayerProfileService.PurchaseCompleted -= PresentPurchase;
+    private void PresentPurchase() => UnlockPresentationUI.ShowPending(owner);
     public static void Show(Canvas owner)
     {
         if(owner==null)return;Transform old=owner.rootCanvas.transform.Find("ShopOverlay");if(old!=null){old.gameObject.SetActive(true);return;}
@@ -26,10 +29,9 @@ public sealed class ShopUI : MonoBehaviour
         if(!PlayerProfileService.ShopAvailable)
         {
             float center=Mathf.Max(210,root.rect.height*.36f);
-            Color gold=new Color(1f,.75f,.25f);
-            Rect("LockTop",root,0,center,100,110).gameObject.AddComponent<Image>().color=gold;
-            Rect("LockHole",root,0,center+20,60,80).gameObject.AddComponent<Image>().color=new Color(.01f,.025f,.018f);
-            Rect("LockBody",root,0,center+80,160,120).gameObject.AddComponent<Image>().color=gold;
+            RectTransform lockIcon=Rect("ModeLock",root,0,center+100,36,46);
+            lockIcon.pivot=new Vector2(.5f,.5f);lockIcon.localScale=Vector3.one*4;
+            GameModeSelectUI.DrawLock(lockIcon);
             Text(root,"SKLEP W PRZYGOTOWANIU",0,center+240,w,84,36);
             Text(root,"Zbieraj złoto i diamenty.\nZakupy będą dostępne później.",0,center+334,w-40,120,29);
             return;
@@ -66,7 +68,7 @@ public sealed class ShopUI : MonoBehaviour
         float y = 112f;
         AvatarCategory("ZWIERZĘTA", animals, w, ref y);
         AvatarCategory("WAKACYJNE", vacation, w, ref y);
-        AvatarCategory("NA LUZIE", relaxed, w, ref y);
+        AvatarCategory("LUDZIE", relaxed, w, ref y);
         Sprite[] frames = Resources.LoadAll<Sprite>("ShopFrames");
         ShopCosmeticCategory("RAMKI", frames, "frame", w, ref y);
         Sprite[] backs = Resources.LoadAll<Sprite>("ShopBacks");
@@ -143,8 +145,9 @@ public sealed class ShopUI : MonoBehaviour
         if (!locked) return;
         Image shade = Rect("Locked", tile, 0, 0, tile.sizeDelta.x, tile.sizeDelta.y).gameObject.AddComponent<Image>();
         shade.color = new Color(0f, 0f, 0f, .58f); shade.raycastTarget = false;
-        TMP_Text lockText = Text(tile, "LOCK", 0f, 0f, 110f, 112f, 34f);
-        lockText.alignment = TextAlignmentOptions.Center; lockText.color = new Color(1f, .8f, .3f, .95f);
+        RectTransform icon=Rect("ModeLock",tile,0,tile.sizeDelta.y*.5f,36,46);
+        icon.pivot=new Vector2(.5f,.5f);icon.localScale=Vector3.one*1.5f;
+        GameModeSelectUI.DrawLock(icon);
     }
     private void Offline(float w)
     {

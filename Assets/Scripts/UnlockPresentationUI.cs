@@ -14,7 +14,7 @@ public sealed class UnlockPresentationUI : MonoBehaviour
         GameObject obj=new GameObject("UnlockPresentation",typeof(RectTransform),typeof(Image),typeof(Canvas),typeof(GraphicRaycaster),typeof(UnlockPresentationUI));
         obj.transform.SetParent(owner.rootCanvas.transform,false);RectTransform root=obj.transform as RectTransform;
         root.anchorMin=Vector2.zero;root.anchorMax=Vector2.one;root.offsetMin=root.offsetMax=Vector2.zero;
-        obj.GetComponent<Image>().color=new Color(0,0,0,.86f);Canvas c=obj.GetComponent<Canvas>();c.overrideSorting=true;c.sortingOrder=500;
+        obj.GetComponent<Image>().color=new Color(0,0,0,.86f);Canvas c=obj.GetComponent<Canvas>();c.overrideSorting=true;c.sortingOrder=700;
         obj.GetComponent<UnlockPresentationUI>().Build(owner);
     }
     private RectTransform Rect(string name,Transform parent,Vector2 pos,Vector2 size)

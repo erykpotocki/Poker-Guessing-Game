@@ -27,11 +27,21 @@ namespace PokerProfile
     }
     [Serializable] public sealed class PendingUnlock
     {
+        public string Source = "";
         public string Category = "";
         public string ItemId = "";
         public string Title = "";
     }
-    [Serializable] public sealed class Progression { public long Experience; public int Level => 1 + (int)(Experience / 100); }
+    [Serializable] public sealed class Progression
+    {
+        public long Experience;
+        public int CurveVersion;
+        public int Level => 1+(int)Math.Floor((Math.Sqrt(9+Math.Max(0,Experience)*.16)-3)/2);
+        public static long Threshold(int level) { long n=Math.Max(0,level-1);return 25*n*(n+3); }
+        public long RequiredExperience => 100L+50L*(Level-1);
+        public long CurrentExperience => Math.Max(0,Experience)-Threshold(Level);
+        public static int LevelGold(int level) => Math.Min(100,5+Math.Max(0,level-2)*3);
+    }
     [Serializable] public sealed class MissionPeriod
     {
         public string Key = "";
@@ -114,7 +124,10 @@ namespace PokerProfile
             data.Statistics.GamesPlayed++;
             if (won) data.Statistics.GamesWon++;
             data.Wallet.Coins += Math.Max(0,Math.Min(200,coins));
+            int previousLevel=data.Progression.Level;
             data.Progression.Experience += Math.Max(0,Math.Min(100,xp));
+            for(int level=previousLevel+1;level<=data.Progression.Level;level++)
+                data.Wallet.Coins+=Progression.LevelGold(level);
             if (diamond) data.Wallet.RewardCurrency++;
             Evaluate(data);
             return true;
@@ -136,7 +149,7 @@ namespace PokerProfile
             Award(d,"spins_10",d.Statistics.Spins,10,()=>d.Wallet.Coins += 100);
         }
         public static void Own(List<string> inventory,string id) { if (!inventory.Contains(id)) inventory.Add(id); }
-        public static void Unlock(PlayerSave data,string category,string id,string title)
+        public static void Unlock(PlayerSave data,string category,string id,string title,string source="")
         {
             List<string> inventory = category == "avatar" ? data.Inventory.OwnedAvatars :
                 category == "back" ? data.Inventory.OwnedCardBacks : data.Inventory.OwnedFrames;
@@ -144,7 +157,7 @@ namespace PokerProfile
             Own(inventory,id);
             if (wasOwned) return;
             data.PendingUnlocks ??= new List<PendingUnlock>();
-            data.PendingUnlocks.Add(new PendingUnlock { Category=category,ItemId=id,Title=title });
+            data.PendingUnlocks.Add(new PendingUnlock { Category=category,ItemId=id,Title=title,Source=source });
         }
         private static void Award(PlayerSave d,string id,int progress,int target,Action grant)
         {

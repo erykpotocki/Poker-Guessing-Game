@@ -28,7 +28,10 @@
     const editing = isEditing();
     // The software keyboard must not be mistaken for a landscape device.
     const viewport = editing && lastViewport ? lastViewport : {
-      width: Math.max(1, window.innerWidth), height: Math.max(1, window.innerHeight)
+      width: Math.max(1, window.visualViewport?.width ?? window.innerWidth),
+      height: Math.max(1, window.visualViewport?.height ?? window.innerHeight),
+      x: window.visualViewport?.offsetLeft || 0,
+      y: window.visualViewport?.offsetTop || 0
     };
     if (!editing) lastViewport = viewport;
     const wanted = bootVisible ? 'portrait' : desired;
@@ -48,15 +51,15 @@
     }
     logicalWidth = rotation ? availableHeight : availableWidth;
     logicalHeight = rotation ? availableWidth : availableHeight;
-    if (!mobile) {
+    if (!mobile || wantsLandscape) {
       const ratio = wantsLandscape ? 16 / 9 : 9 / 16;
-      logicalWidth = Math.min(availableWidth, availableHeight * ratio);
+      logicalWidth = Math.min(logicalWidth, logicalHeight * ratio);
       logicalHeight = logicalWidth / ratio;
     }
     container.style.width = logicalWidth + 'px';
     container.style.height = logicalHeight + 'px';
-    container.style.left = (left + availableWidth / 2) + 'px';
-    container.style.top = (top + availableHeight / 2) + 'px';
+    container.style.left = (viewport.x + left + availableWidth / 2) + 'px';
+    container.style.top = (viewport.y + top + availableHeight / 2) + 'px';
     container.style.transform = 'translate(-50%, -50%) rotate(' + rotation + 'deg)';
     container.style.setProperty('--view-width', logicalWidth + 'px');
     container.style.setProperty('--view-height', logicalHeight + 'px');

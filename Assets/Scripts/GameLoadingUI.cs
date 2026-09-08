@@ -81,7 +81,6 @@ public class GameLoadingUI : MonoBehaviour
     private void BuildVisuals()
     {
         if (loadingText != null) loadingText.gameObject.SetActive(true);
-        if (tipText != null) tipText.gameObject.SetActive(false);
         if (artwork != null) return;
 
         RectTransform panel = loadingPanel.GetComponent<RectTransform>();
@@ -100,6 +99,15 @@ public class GameLoadingUI : MonoBehaviour
         Stretch(artwork.rectTransform);
         artwork.color = new Color(0.68f, 0.68f, 0.68f, 1f);
         artwork.raycastTarget = false;
+        CreateLoadingCaption(panel,"POKER ZGADYWANY",.77f,.89f,48);
+        string[] tips={
+            "Sprawdzasz układ we wszystkich kartach graczy — nie tylko w swojej ręce.",
+            "Para asów wystarczy do deklaracji A A. Pozostałe karty nie muszą do niej pasować.",
+            "Full wymaga trzech kart jednej wartości i dwóch kart innej wartości.",
+            "Jeśli sprawdzany układ istnieje, przegrywa sprawdzający. Jeśli nie — ostatni deklarujący."
+        };
+        if(tipText!=null)tipText.gameObject.SetActive(false);
+        tipText=CreateLoadingCaption(panel,tips[Random.Range(0,tips.Length)],.37f,.55f,30);
 
         CreateRingSprite();
         GameObject ring = new GameObject("LoadingSpinner", typeof(RectTransform), typeof(Image));
@@ -145,6 +153,19 @@ public class GameLoadingUI : MonoBehaviour
         artwork.uvRect = screenAspect > artAspect
             ? new Rect(0f, (1f - artAspect / screenAspect) * 0.5f, 1f, artAspect / screenAspect)
             : new Rect((1f - screenAspect / artAspect) * 0.5f, 0f, screenAspect / artAspect, 1f);
+    }
+
+    private TMP_Text CreateLoadingCaption(Transform parent,string value,float bottom,float top,float fontSize)
+    {
+        var box=new GameObject("LoadingCaption",typeof(RectTransform),typeof(Image)).GetComponent<RectTransform>();
+        box.SetParent(parent,false);box.anchorMin=new Vector2(.17f,bottom);box.anchorMax=new Vector2(.83f,top);box.offsetMin=box.offsetMax=Vector2.zero;
+        box.GetComponent<Image>().color=new Color(.01f,.02f,.015f,.72f);box.GetComponent<Image>().raycastTarget=false;
+        var text=new GameObject("Caption",typeof(RectTransform),typeof(TextMeshProUGUI)).GetComponent<TMP_Text>();
+        text.transform.SetParent(box,false);text.rectTransform.anchorMin=Vector2.zero;text.rectTransform.anchorMax=Vector2.one;
+        text.rectTransform.offsetMin=new Vector2(22,10);text.rectTransform.offsetMax=new Vector2(-22,-10);
+        text.text=value;text.fontSize=fontSize;text.enableAutoSizing=true;text.fontSizeMin=20;text.fontSizeMax=fontSize;
+        text.alignment=TextAlignmentOptions.Center;text.color=new Color(1,.88f,.62f);text.raycastTarget=false;
+        return text;
     }
 
     private static void Stretch(RectTransform rect)

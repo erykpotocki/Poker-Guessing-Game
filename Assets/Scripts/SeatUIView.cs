@@ -102,6 +102,17 @@ public class SeatUIView : MonoBehaviour
 
     public void Set(string nick, Sprite avatar)
     {
+        if(circularAvatarContent==null)ConfigureCircularAvatar();
+        if(avatarImage!=null)
+        {
+            avatarImage.overrideSprite=null;
+            avatarImage.sprite=circleMaskSprite;
+            avatarImage.type=Image.Type.Simple;
+            avatarImage.material=null;
+            var mask=avatarImage.GetComponent<Mask>();
+            if(mask!=null){mask.enabled=true;mask.showMaskGraphic=false;}
+        }
+        if(circularAvatarContent!=null){circularAvatarContent.maskable=true;circularAvatarContent.material=null;}
         if (nickText != null)
             nickText.text = nick;
 
@@ -259,6 +270,8 @@ public class SeatUIView : MonoBehaviour
 
         Sprite currentAvatar = avatarImage.sprite;
         avatarImage.sprite = circleMaskSprite;
+        avatarImage.overrideSprite=null;
+        avatarImage.type=Image.Type.Simple;
         avatarImage.color = Color.white;
         avatarImage.preserveAspect = false;
 
@@ -288,6 +301,7 @@ public class SeatUIView : MonoBehaviour
         circularAvatarContent.color = Color.white;
         circularAvatarContent.preserveAspect = false;
         circularAvatarContent.raycastTarget = false;
+        if(circularAvatarContent.GetComponent<CircularAvatarMesh>()==null)circularAvatarContent.gameObject.AddComponent<CircularAvatarMesh>();
     }
 
     private void ConfigureCircularHighlight()

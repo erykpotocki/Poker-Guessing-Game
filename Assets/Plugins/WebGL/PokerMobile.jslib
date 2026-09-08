@@ -1,4 +1,22 @@
 mergeInto(LibraryManager.library, {
+  PokerLoadProfile: function() {
+    var json = '';
+    try {
+      json = localStorage.getItem('poker.profile.v1') || '';
+      if (json) JSON.parse(json);
+    } catch (_) { json = ''; }
+    var size = lengthBytesUTF8(json) + 1;
+    var buffer = _malloc(size);
+    stringToUTF8(json, buffer, size);
+    return buffer;
+  },
+  PokerSaveProfile: function(pointer) {
+    try {
+      var json = UTF8ToString(pointer);
+      localStorage.setItem('poker.profile.v1', json);
+      return localStorage.getItem('poker.profile.v1') === json ? 1 : 0;
+    } catch (_) { return 0; }
+  },
   PokerNextLoadingArtwork: function() {
     return window.PokerMobile && window.PokerMobile.nextArtwork
       ? window.PokerMobile.nextArtwork()

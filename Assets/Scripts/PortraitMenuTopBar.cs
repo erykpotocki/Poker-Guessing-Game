@@ -14,6 +14,8 @@ public sealed class PortraitMenuTopBar : MonoBehaviour
     private TMP_Text goldText, diamondText;
     private Image goldIcon, diamondIcon;
     private Image profileImage;
+    private TMP_Text levelText, experienceText;
+    private RectTransform experienceTrack, experienceFill;
     private Vector2Int lastScreen;
     private Rect lastSafeArea;
 
@@ -39,7 +41,7 @@ public sealed class PortraitMenuTopBar : MonoBehaviour
         RectTransform root = obj.transform as RectTransform;
         root.anchorMin = new Vector2(0f, 1f); root.anchorMax = Vector2.one; root.pivot = new Vector2(.5f, 1f);
         root.offsetMin = root.offsetMax = Vector2.zero;
-        Image background = obj.GetComponent<Image>(); background.color = new Color(.006f, .008f, .008f, .96f); background.raycastTarget = false;
+        Image background = obj.GetComponent<Image>(); background.color = Color.black; background.raycastTarget = false;
         // Keep the functional bar above menu overlays so its profile/spin icons
         // remain reachable while the shop or another menu panel is open.
         Canvas layer = obj.GetComponent<Canvas>(); layer.overrideSorting = true; layer.sortingOrder = 700;
@@ -51,7 +53,7 @@ public sealed class PortraitMenuTopBar : MonoBehaviour
     public static void ApplyOverlayInset(RectTransform root)
     {
         if (root == null || Screen.height <= 0) return;
-        RectTransform canvasRect = root.root as RectTransform;
+        RectTransform canvasRect = root.GetComponentInParent<Canvas>().rootCanvas.transform as RectTransform;
         float scaleY = canvasRect != null ? canvasRect.rect.height / Screen.height : 1f;
         float safeTop = (Screen.height - Screen.safeArea.yMax) * scaleY;
         float panelHeight = safeTop + 100f;
@@ -66,6 +68,14 @@ public sealed class PortraitMenuTopBar : MonoBehaviour
         diamondIcon = CreateCurrencyIcon("DiamondIcon", "WalletIcons/diament");
         goldText = CreateText("Gold", new Color(1f, .72f, .16f));
         diamondText = CreateText("Diamonds", new Color(.3f, .78f, 1f));
+        levelText=CreateText("Level",new Color(.75f,1f,.72f));
+        experienceText=CreateText("ExperienceCount",Color.white);
+        foreach(var text in new[]{levelText,experienceText}){text.enableAutoSizing=true;text.fontSizeMin=14;text.fontSizeMax=24;text.alignment=TextAlignmentOptions.Center;}
+        experienceTrack=new GameObject("ExperienceTrack",typeof(RectTransform),typeof(Image)).GetComponent<RectTransform>();
+        experienceTrack.SetParent(transform,false);experienceTrack.GetComponent<Image>().color=new Color(.04f,.15f,.07f);experienceTrack.GetComponent<Image>().raycastTarget=false;
+        experienceFill=new GameObject("ExperienceFill",typeof(RectTransform),typeof(Image)).GetComponent<RectTransform>();
+        experienceFill.SetParent(experienceTrack,false);experienceFill.GetComponent<Image>().color=new Color(.12f,.72f,.29f);experienceFill.GetComponent<Image>().raycastTarget=false;
+        experienceText.transform.SetAsLastSibling();
         CreateIconButton("Spin", CreateSpinSprite(), ShowSpin, out _);
         CreateIconButton("Profile", null, ShowProfile, out profileImage);
         PlayerProfileService.Changed += Refresh;
@@ -87,6 +97,7 @@ public sealed class PortraitMenuTopBar : MonoBehaviour
     {
         GameObject obj = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI)); obj.transform.SetParent(transform, false);
         TMP_Text text = obj.GetComponent<TextMeshProUGUI>(); text.fontSize = 34; text.fontStyle = FontStyles.Bold;
+        text.textWrappingMode=TextWrappingModes.NoWrap;text.overflowMode=TextOverflowModes.Ellipsis;
         text.alignment = TextAlignmentOptions.MidlineLeft; text.color = color; text.raycastTarget = false; return text;
     }
 
@@ -94,7 +105,7 @@ public sealed class PortraitMenuTopBar : MonoBehaviour
     {
         GameObject buttonObject = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button)); buttonObject.transform.SetParent(transform, false);
         Image buttonBackground = buttonObject.GetComponent<Image>();
-        buttonBackground.color = new Color(.10f, .035f, .018f, .96f);
+        buttonBackground.color = Color.clear;
         buttonBackground.raycastTarget = true;
         Button button = buttonObject.GetComponent<Button>(); button.onClick.AddListener(action);
         GameObject iconObject = new GameObject("Icon", typeof(RectTransform), typeof(Image)); iconObject.transform.SetParent(buttonObject.transform, false);
@@ -105,6 +116,7 @@ public sealed class PortraitMenuTopBar : MonoBehaviour
             Mask mask = iconObject.AddComponent<Mask>(); mask.showMaskGraphic = false;
             GameObject content = new GameObject("Avatar", typeof(RectTransform), typeof(Image)); content.transform.SetParent(iconObject.transform, false);
             icon = content.GetComponent<Image>(); icon.preserveAspect = false; icon.raycastTarget = false;
+            content.AddComponent<CircularAvatarMesh>();
             RectTransform contentRect = icon.rectTransform; contentRect.anchorMin = Vector2.zero; contentRect.anchorMax = Vector2.one; contentRect.offsetMin = contentRect.offsetMax = Vector2.zero;
         }
         else { icon = maskImage; icon.raycastTarget = false; }
@@ -115,11 +127,26 @@ public sealed class PortraitMenuTopBar : MonoBehaviour
     {
         if (goldText == null) return;
         var data = PlayerProfileService.Data;
-        goldText.text = data.Wallet.Coins.ToString();
-        diamondText.text = data.Wallet.RewardCurrency.ToString();
+        goldText.text = FormatCurrency(data.Wallet.Coins);
+        diamondText.text = FormatCurrency(data.Wallet.RewardCurrency);
+        levelText.text="LVL "+data.Progression.Level;
+        experienceText.text=$"{data.Progression.CurrentExperience}/{data.Progression.RequiredExperience} EXP";
+        float fraction=(float)((double)data.Progression.CurrentExperience/data.Progression.RequiredExperience);
+        experienceFill.anchorMin=Vector2.zero;experienceFill.anchorMax=new Vector2(Mathf.Clamp01(fraction),1);
+        experienceFill.offsetMin=experienceFill.offsetMax=Vector2.zero;
         AvatarDatabase avatars = Resources.Load<AvatarDatabase>("ProfileAvatars");
         if (profileImage != null && avatars != null && avatars.avatars != null && avatars.avatars.Length > 0)
             profileImage.sprite = avatars.avatars[Mathf.Clamp(PlayerProfileService.AvatarIndex, 0, avatars.avatars.Length - 1)];
+        Layout();
+    }
+
+    public static string FormatCurrency(long amount)
+    {
+        if(amount<10000)return amount.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        decimal divisor=amount>=1000000000?1000000000m:amount>=1000000?1000000m:1000m;
+        string suffix=amount>=1000000000?" mld":amount>=1000000?" mln":"k";
+        decimal compact=decimal.Floor(amount/divisor*10)/10;
+        return compact.ToString("0.#",System.Globalization.CultureInfo.GetCultureInfo("pl-PL"))+suffix;
     }
 
     private void Update()
@@ -137,14 +164,30 @@ public sealed class PortraitMenuTopBar : MonoBehaviour
         float safeLeft = Screen.safeArea.xMin * sx, safeRight = (Screen.width - Screen.safeArea.xMax) * sx;
         float height = safeTop + 100f; bar.sizeDelta = new Vector2(0f, height);
         RectTransform spin = transform.Find("Spin") as RectTransform, profile = transform.Find("Profile") as RectTransform;
-        Place(profile, Vector2.one, Vector2.one, new Vector2(-(safeRight + 54f), -(safeTop + 50f)), new Vector2(72f, 72f));
-        Place(spin, Vector2.one, Vector2.one, new Vector2(-(safeRight + 146f), -(safeTop + 50f)), new Vector2(68f, 68f));
-        // Left-aligned currency groups: icon, a small gap, amount, then a
-        // larger gap before the second currency.
-        Place(goldIcon.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(safeLeft + 30f, -(safeTop + 50f)), new Vector2(42f, 42f));
-        PlaceLeft(goldText.rectTransform, new Vector2(safeLeft + 70f, -(safeTop + 50f)), new Vector2(90f, 70f));
-        Place(diamondIcon.rectTransform, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(safeLeft + 250f, -(safeTop + 50f)), new Vector2(42f, 42f));
-        PlaceLeft(diamondText.rectTransform, new Vector2(safeLeft + 290f, -(safeTop + 50f)), new Vector2(90f, 70f));
+        float unit=(canvasRect.rect.width-safeLeft-safeRight)/1000f;
+        Place(profile,Vector2.one,Vector2.one,new Vector2(-safeRight-54*unit,-safeTop-50),new Vector2(72,72)*unit);
+        Place(spin,Vector2.one,Vector2.one,new Vector2(-safeRight-146*unit,-safeTop-50),new Vector2(68,68)*unit);
+        goldText.fontSize=diamondText.fontSize=34*unit;
+        goldText.enableAutoSizing=diamondText.enableAutoSizing=true;
+        goldText.fontSizeMin=diamondText.fontSizeMin=22*unit;
+        goldText.fontSizeMax=diamondText.fontSizeMax=34*unit;
+        float goldWidth=Mathf.Clamp(goldText.GetPreferredValues(goldText.text,10000,100).x+4*unit,36*unit,130*unit);
+        float diamondWidth=Mathf.Clamp(diamondText.GetPreferredValues(diamondText.text,10000,100).x+4*unit,36*unit,130*unit);
+        float goldX=safeLeft+30*unit;
+        float goldValueX=goldX+35*unit;
+        float diamondX=goldValueX+goldWidth+48*unit;
+        float diamondValueX=diamondX+35*unit;
+        Place(goldIcon.rectTransform,new Vector2(0,1),new Vector2(0,1),new Vector2(goldX,-safeTop-50),Vector2.one*42*unit);
+        PlaceLeft(goldText.rectTransform,new Vector2(goldValueX,-safeTop-50),new Vector2(goldWidth,70));
+        Place(diamondIcon.rectTransform,new Vector2(0,1),new Vector2(0,1),new Vector2(diamondX,-safeTop-50),Vector2.one*42*unit);
+        PlaceLeft(diamondText.rectTransform,new Vector2(diamondValueX,-safeTop-50),new Vector2(diamondWidth,70));
+        float xpLeft=diamondValueX+diamondWidth+32*unit;
+        float xpRight=canvasRect.rect.width-safeRight-204*unit;
+        float xpWidth=Mathf.Max(160*unit,xpRight-xpLeft);
+        foreach(var text in new[]{levelText,experienceText}){text.fontSizeMin=14*unit;text.fontSizeMax=26*unit;}
+        PlaceLeft(levelText.rectTransform,new Vector2(xpLeft,-safeTop-27),new Vector2(xpWidth,30));
+        PlaceLeft(experienceTrack,new Vector2(xpLeft,-safeTop-63),new Vector2(xpWidth,26));
+        PlaceLeft(experienceText.rectTransform,new Vector2(xpLeft,-safeTop-63),new Vector2(xpWidth,30));
     }
 
     private static void Place(RectTransform rect, Vector2 anchorMin, Vector2 anchorMax, Vector2 position, Vector2 size)

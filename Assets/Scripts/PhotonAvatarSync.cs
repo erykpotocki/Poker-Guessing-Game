@@ -30,10 +30,11 @@ public class PhotonAvatarSync : MonoBehaviourPunCallbacks
     {
         PushAvatarIndexToPhoton();
     }
+    public override void OnLeftRoom()=>AvatarPicker.ClearMatchAvatar();
 
     private void PushAvatarIndexToPhoton()
     {
-        int idx = PlayerPrefs.GetInt(PrefKey, PlayerProfileService.AvatarIndex);
+        int idx = AvatarPicker.ForCurrentRoom();
         string profileId = PlayerPrefs.GetString("PhotonUserId", "");
 
         var props = new Hashtable
