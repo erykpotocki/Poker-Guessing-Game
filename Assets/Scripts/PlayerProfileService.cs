@@ -39,6 +39,7 @@ public static class PlayerProfileService
             current.Daily ??= new MissionPeriod();
             current.Weekly ??= new MissionPeriod();
             current.Wheel ??= new WheelState();
+            if(current.Wheel.PendingPrize!=null && !current.Wheel.PendingPrize.IsValid)current.Wheel.PendingPrize=null;
             current.Achievements ??= new System.Collections.Generic.List<string>();
             current.Receipts ??= new System.Collections.Generic.List<string>();
             current.Opponents ??= new System.Collections.Generic.List<OpponentRecord>();
@@ -136,67 +137,127 @@ public static class PlayerProfileService
         get
         {
             DateTime now = DateTime.UtcNow;
-            ClampTestSpinCooldown(now);
+            RefreshSpinCharges(now);
             long ticks = Data.Wheel.NextFreeUtcTicks - now.Ticks;
             return ticks > 0 ? TimeSpan.FromTicks(ticks) : TimeSpan.Zero;
         }
     }
-    public static bool CanSpin => SpinRemaining <= TimeSpan.Zero;
+    public static int SpinCharges { get { RefreshSpinCharges(DateTime.UtcNow); return Data.Wheel.Charges; } }
+    public static bool CanSpin => SpinCharges > 0;
+    public static float AvatarSpinChance => Data.Wheel.AvatarsWon==0?.10f:Data.Wheel.AvatarsWon==1?.05f:.10f/6f;
     public static string Spin() => Spin(out _);
     public static string Spin(out int sector)
     {
+        return Spin(out sector, out _);
+    }
+    public static string DiamondAmount(int amount)
+    {
+        int last = amount % 10, lastTwo = amount % 100;
+        return amount + (amount == 1 ? " diament" : last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14) ? " diamenty" : " diamentów");
+    }
+    public static string Spin(out int sector, out Sprite wonAvatar)
+    {
+        if(Data.Wheel.PendingPrize!=null && (!Data.Wheel.PendingPrize.IsValid || Data.Wheel.PendingPrize.Category=="frame" || ((Data.Wheel.PendingPrize.Category=="avatar" || Data.Wheel.PendingPrize.Category=="back") && !CosmeticCatalog.Get(Data.Wheel.PendingPrize.Category,Data.Wheel.PendingPrize.ItemId).Spin))){Data.Wheel.PendingPrize=null;Save();}
+        if(Data.Wheel.PendingPrize!=null)
+        {
+            var pending=Data.Wheel.PendingPrize;sector=pending.Sector;
+            // Older saves can have an empty label or an obsolete sector.
+            if(pending.Category=="gold")pending.Sector=pending.Amount>50?6:3;
+            if(pending.Category=="diamonds")pending.Sector=pending.Amount>3?2:1;
+            sector=pending.Sector;
+            wonAvatar=ResolveSpinPreview(pending);return pending.Category=="gold"?pending.Amount+" złota":pending.Category=="diamonds"?DiamondAmount(pending.Amount):pending.Category=="frame"?"Nowa ramka":pending.Category=="back"?"Nowy rewers":"Nowy avatar";
+        }
+        wonAvatar = null;
         sector = -1;
         DateTime now = DateTime.UtcNow;
-        ClampTestSpinCooldown(now);
-        if (Data.Wheel.NextFreeUtcTicks > now.Ticks) return null;
+        RefreshSpinCharges(now);
+        if (Data.Wheel.Charges <= 0) return null;
         // Clockwise from the top of the supplied wheel: ?, diamond, diamond
         // bag, gold, ?, diamond, gold bag, gold. One draw drives money AND art.
-        sector = UnityEngine.Random.Range(0,8);
+        float roll=UnityEngine.Random.value;
+        float avatarChance=AvatarSpinChance;
+        sector=roll<avatarChance?(UnityEngine.Random.value<.5f?0:4):
+            roll<avatarChance+.30f?(UnityEngine.Random.value<.8f?(UnityEngine.Random.value<.5f?1:5):2):
+            (UnityEngine.Random.value<.15f?6:(UnityEngine.Random.value<.5f?3:7));
         string reward;
+        var prize=new SpinPrize{Sector=sector};
         if (sector == 0 || sector == 4)
         {
             var available = new System.Collections.Generic.List<Sprite>();
             foreach (Sprite sprite in Resources.LoadAll<Sprite>("ShopAvatars"))
-                if (!Data.Inventory.OwnedAvatars.Contains("download:"+sprite.name)) available.Add(sprite);
-            if (available.Count > 0)
+                if (CosmeticCatalog.Get("avatar","download:"+sprite.name).Spin && !Data.Inventory.OwnedAvatars.Contains("download:"+sprite.name)) available.Add(sprite);
+            var backs=CosmeticCatalog.All("back").FindAll(o=>o.Spin&&!CosmeticCatalog.Owned("back",o.Id));
+            if(backs.Count>0 && (available.Count==0||UnityEngine.Random.value<.5f))
+            {
+                var back=backs[UnityEngine.Random.Range(0,backs.Count)];
+                prize.Category="back";prize.ItemId=back.Id;wonAvatar=back.Sprite;reward="Nowy rewers";
+            }            else if (available.Count > 0)
             {
                 Sprite sprite = available[UnityEngine.Random.Range(0,available.Count)];
-                ProgressionRules.Unlock(Data,"avatar","download:"+sprite.name,"ODBLOKOWANO NOWY AVATAR");
-                reward = "nowy avatar — znajdziesz go w MOIM PROFILU";
+                prize.Category="avatar";prize.ItemId="download:"+sprite.name;
+                wonAvatar = sprite;
+                reward = "Nowy avatar";
             }
             else
             {
                 int amount = UnityEngine.Random.Range(1,4);
-                Data.Wallet.RewardCurrency += amount;
-                reward = amount+" diamentów (masz już wszystkie avatary)";
+                prize.Category="diamonds";prize.Amount=amount;
+                // With the cosmetic collection complete, land on a currency
+                // sector instead of presenting currency under a question mark.
+                sector=1;prize.Sector=sector;
+                reward = DiamondAmount(amount);
             }
         }
         else if (sector == 1 || sector == 5 || sector == 2)
         {
             int amount = sector == 2 ? UnityEngine.Random.Range(4,7) : UnityEngine.Random.Range(1,4);
-            Data.Wallet.RewardCurrency += amount; reward = amount+" diamentów";
+            prize.Category="diamonds";prize.Amount=amount; reward = DiamondAmount(amount);
         }
         else
         {
             int amount = sector == 6 ? UnityEngine.Random.Range(51,100) : UnityEngine.Random.Range(10,51);
-            Data.Wallet.Coins += amount; reward = amount+" złota";
+            prize.Category="gold";prize.Amount=amount; reward = amount+" złota";
         }
         Data.Statistics.Spins++;
         Data.Wheel.FreeUsed = true;
         if (reward != null)
         {
-            // Temporary tuning value for rapid testing of the reward wheel.
-            Data.Wheel.NextFreeUtcTicks = now.AddMinutes(1).Ticks;
+            if(Data.Wheel.Charges==3)Data.Wheel.NextFreeUtcTicks=now.AddHours(4).Ticks;
+            Data.Wheel.Charges--;
+            prize.Label=reward;Data.Wheel.PendingPrize=prize;
             Save();
         }
         return reward;
     }
-    private static void ClampTestSpinCooldown(DateTime now)
+    public static Sprite ResolveSpinPreview(SpinPrize prize)
     {
-        long testMaximum = now.AddMinutes(1).Ticks;
-        if (Data.Wheel.NextFreeUtcTicks <= testMaximum) return;
-        Data.Wheel.NextFreeUtcTicks = testMaximum;
-        Save();
+        if(prize.Category=="avatar")return Resources.Load<Sprite>("ShopAvatars/"+prize.ItemId.Substring(9));
+        if(prize.Category=="back")return CardBackDatabase.FindOnline(prize.ItemId);
+        if(prize.Category=="frame")return LevelFrameCatalog.Resolve(prize.ItemId);
+        return null;
+    }
+    public static void ClaimSpinPrize()
+    {
+        if(ProgressionRules.ClaimSpinPrize(Data))Save();
+    }
+    private static void RefreshSpinCharges(DateTime now)
+    {
+        var wheel=Data.Wheel;bool changed=false;
+        if(wheel.ChargeVersion==0)
+        {
+            wheel.ChargeVersion=1;wheel.Charges=3;wheel.NextFreeUtcTicks=0;
+            wheel.AvatarsWon=Data.Inventory.OwnedAvatars.FindAll(id=>id.StartsWith("download:")).Count;
+            changed=true;
+        }
+        if(wheel.Charges<3 && wheel.NextFreeUtcTicks>0 && now.Ticks>=wheel.NextFreeUtcTicks)
+        {
+            long interval=TimeSpan.FromHours(4).Ticks;
+            long recovered=1+(now.Ticks-wheel.NextFreeUtcTicks)/interval;
+            wheel.Charges=(int)Math.Min(3,wheel.Charges+recovered);
+            wheel.NextFreeUtcTicks=wheel.Charges==3?0:wheel.NextFreeUtcTicks+recovered*interval;
+            changed=true;
+        }
+        if(changed)Save();
     }
     public static bool ClaimMission(bool weekly,string kind) { bool result = ProgressionRules.ClaimMission(Data,weekly,kind,DateTime.UtcNow); if (result) Save(); return result; }
     private static bool adInFlight;

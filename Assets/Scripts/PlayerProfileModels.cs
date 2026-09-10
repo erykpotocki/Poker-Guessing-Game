@@ -44,6 +44,15 @@ namespace PokerProfile
         public bool FreeUsed;
         public int ExtraUsed, ExtraCredits;
         public long NextFreeUtcTicks;
+        public int ChargeVersion, Charges, AvatarsWon;
+        public SpinPrize PendingPrize;
+    }
+    [Serializable] public sealed class SpinPrize
+    {
+        public int Sector, Amount;
+        public string Category, ItemId, Label;
+        public bool IsValid => (Category=="gold"||Category=="diamonds") ? Amount>0 :
+            (Category=="avatar"||Category=="back"||Category=="frame") && !string.IsNullOrEmpty(ItemId);
     }
     [Serializable] public sealed class PlayerSave
     {
@@ -82,6 +91,17 @@ namespace PokerProfile
     }
     public static class ProgressionRules
     {
+        public static bool ClaimSpinPrize(PlayerSave data)
+        {
+            var prize=data.Wheel.PendingPrize;if(prize==null||!prize.IsValid){data.Wheel.PendingPrize=null;return false;}
+            if(prize.Category=="gold")data.Wallet.Coins+=prize.Amount;
+            else if(prize.Category=="diamonds")data.Wallet.RewardCurrency+=prize.Amount;
+            else if(prize.Category=="avatar"){Own(data.Inventory.OwnedAvatars,prize.ItemId);data.Wheel.AvatarsWon++;}
+            else if(prize.Category=="back"){Own(data.Inventory.OwnedCardBacks,prize.ItemId);data.Wheel.AvatarsWon++;}
+            else if(prize.Category=="frame"){Own(data.Inventory.OwnedFrames,prize.ItemId);data.Wheel.AvatarsWon++;}
+            else return false;
+            data.Wheel.PendingPrize=null;return true;
+        }
         public const int MaxExtraSpins = 2;
         public static void RefreshPeriods(PlayerSave data, DateTime utc)
         {

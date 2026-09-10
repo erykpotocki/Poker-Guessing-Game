@@ -56,7 +56,7 @@ public sealed class PlayerProfileUI : MonoBehaviour
         if (headerAvatars != null && headerAvatars.avatars != null && headerAvatars.avatars.Length > 0)
         {
             int selected = Mathf.Clamp(PlayerProfileService.AvatarIndex,0,headerAvatars.avatars.Length-1);
-            Image currentAvatar = Rect("CurrentAvatar",root,left,top,88,88).gameObject.AddComponent<Image>();
+            Image currentAvatar = Rect("CurrentAvatar",root,left,top+88,148,148).gameObject.AddComponent<Image>();
             currentAvatar.sprite = headerAvatars.avatars[selected]; currentAvatar.preserveAspect = true;
             AvatarCircleUtility.Apply(currentAvatar);
             currentAvatar.raycastTarget = false;

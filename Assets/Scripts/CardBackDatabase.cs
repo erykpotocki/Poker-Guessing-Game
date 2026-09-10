@@ -6,6 +6,22 @@ public class CardBackDatabase : MonoBehaviour
     [SerializeField] private Sprite[] backSprites;
 
     private Sprite[] resourceBackSprites;
+    public bool Online;
+    private static Sprite[] onlineSprites;
+    public static Sprite[] OnlineSprites
+    {
+        get
+        {
+            if(onlineSprites!=null)return onlineSprites;
+            var textures=Resources.LoadAll<Texture2D>("OnlineBacks");
+            System.Array.Sort(textures,(a,b)=>a.name==b.name?0:a.name=="2clasic"?-1:b.name=="2clasic"?1:string.CompareOrdinal(a.name,b.name));
+            onlineSprites=new Sprite[textures.Length];
+            for(int i=0;i<textures.Length;i++)
+            {var t=textures[i];onlineSprites[i]=Sprite.Create(t,new Rect(t.width*.04f,t.height*.045f,t.width*.92f,t.height*.91f),new Vector2(.5f,.5f),100);onlineSprites[i].name=t.name;}
+            return onlineSprites;
+        }
+    }
+    public static Sprite FindOnline(string id)=>System.Array.Find(OnlineSprites,s=>s.name==id)??(OnlineSprites.Length>0?OnlineSprites[0]:null);
 
     public int BackCount => GetAvailableBackSprites().Length;
 
