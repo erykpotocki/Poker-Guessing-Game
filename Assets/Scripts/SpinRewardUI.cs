@@ -75,16 +75,37 @@ public sealed class SpinRewardUI : MonoBehaviour
         rewardPreview=Box("RewardPreview",panel,new Vector2(0,-135),new Vector2(176,176));rewardPreview.gameObject.SetActive(false);
         hint=Text(panel,"",new Vector2(0,-370),new Vector2(720,50),26);
         hint.color=new Color(.7f,.77f,.72f);
-        spin=Action(panel,"Zakręć spinem",new Vector2(0,-405),new Vector2(520,100),Spin);
+        spin=Action(panel,"Zakręć spinem",new Vector2(0,-555),new Vector2(720,120),Spin);
         spinCaption=spin.GetComponentInChildren<TMP_Text>();spinBackground=spin.GetComponent<Image>();
-        timer=Text(panel,"",new Vector2(0,-545),new Vector2(740,150),38);
+        timer=Text(panel,"",new Vector2(0,-420),new Vector2(740,140),42);
         Canvas.ForceUpdateCanvases();
         var root=transform as RectTransform;
         float scale=Mathf.Min(1f,Mathf.Min((root.rect.width-24)/820f,(root.rect.height-24)/1320f));
         panel.localScale=Vector3.one*Mathf.Max(.1f,scale);
         Refresh();
     }
-    private void Spin(){if(spinning)return;StartCoroutine(SpinWheel());}
+    private void Spin()
+    {
+        if(spinning)return;
+        StartCoroutine(!PlayerProfileService.CanSpin && PlayerProfileService.Data.Wheel.PendingPrize==null ? WatchAd() : SpinWheel());
+    }
+    private IEnumerator WatchAd()
+    {
+        spinning=true;
+        var cover=Box("AdvertisementPlaceholder",transform,Vector2.zero,Vector2.zero);
+        cover.anchorMin=Vector2.zero;cover.anchorMax=Vector2.one;cover.offsetMin=cover.offsetMax=Vector2.zero;
+        cover.gameObject.AddComponent<Image>().color=Color.black;
+        var caption=Text(cover,"",Vector2.zero,new Vector2(780,240),42);
+        float elapsed=0;
+        while(elapsed<5f)
+        {
+            elapsed+=Time.unscaledDeltaTime;
+            caption.text="REKLAMA TESTOWA\n"+Mathf.CeilToInt(5-elapsed)+" s";
+            yield return null;
+        }
+        PlayerProfileService.GrantCompletedAdSpin();
+        Destroy(cover.gameObject);spinning=false;Refresh();
+    }
     private IEnumerator SpinWheel()
     {
         if (!PlayerProfileService.CanSpin && PlayerProfileService.Data.Wheel.PendingPrize==null) { Refresh(); yield break; }
@@ -122,7 +143,7 @@ public sealed class SpinRewardUI : MonoBehaviour
         rewardPreview.gameObject.SetActive(true);
         yield return Celebrate();
         PlayerProfileService.ClaimSpinPrize();
-        hint.text=avatar!=null?"Znajdziesz w swoim profilu":"Nagroda jest już na Twoim koncie";
+        hint.text="";
         spinning=false; Refresh();
     }
     private IEnumerator Celebrate()
@@ -163,15 +184,17 @@ public sealed class SpinRewardUI : MonoBehaviour
     private void Update(){Refresh();}
     private void Refresh()
     {
-        if(timer==null||spin==null)return;TimeSpan left=PlayerProfileService.SpinRemaining;spin.interactable=!spinning&&(PlayerProfileService.CanSpin||PlayerProfileService.Data.Wheel.PendingPrize!=null);
+        if(timer==null||spin==null)return;TimeSpan left=PlayerProfileService.SpinRemaining;spin.interactable=!spinning;
         int charges=PlayerProfileService.SpinCharges;
-        timer.fontSize=22;timer.rectTransform.sizeDelta=new Vector2(760,96);
+        timer.fontSize=38;timer.rectTransform.sizeDelta=new Vector2(760,140);
         string countdown=$"{(int)left.TotalHours:00}:{left.Minutes:00}:{left.Seconds:00}";
         timer.text=$"<size=120%>{charges}/3 spiny</size>\n"+(charges==3?"Posiadasz 3 spiny. Zakręć, by poznać swoją nagrodę!":charges==0?$"Wróć za {countdown}, by spróbować ponownie!":$"Do odnowienia kolejnego spina pozostało {countdown}");
-        spinCaption.text="Zakręć spinem";
+        spinCaption.text=charges>0||PlayerProfileService.Data.Wheel.PendingPrize!=null?"Zakręć spinem":"Obejrzyj reklamę, by zakręcić już teraz!";
         spinCaption.fontSize=spin.interactable?30:25;
         spinBackground.color=spin.interactable?new Color(1,.78f,.25f):new Color(.19f,.25f,.22f);
         spinCaption.color=spin.interactable?new Color(.08f,.06f,.02f):new Color(.7f,.77f,.72f);
     }
 }
+
+
 

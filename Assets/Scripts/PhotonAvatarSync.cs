@@ -30,10 +30,11 @@ public class PhotonAvatarSync : MonoBehaviourPunCallbacks
     {
         PushAvatarIndexToPhoton();
     }
+    public override void OnLeftRoom()=>AvatarPicker.ClearMatchAvatar();
 
     private void PushAvatarIndexToPhoton()
     {
-        int idx = PlayerPrefs.GetInt(PrefKey, PlayerProfileService.AvatarIndex);
+        int idx = AvatarPicker.ForCurrentRoom();
         string profileId = PlayerPrefs.GetString("PhotonUserId", "");
 
         var props = new Hashtable
@@ -43,7 +44,7 @@ public class PhotonAvatarSync : MonoBehaviourPunCallbacks
             { GamesPlayedKey, PlayerProfileService.Data.Statistics.GamesPlayed },
             { GamesWonKey, PlayerProfileService.Data.Statistics.GamesWon },
             { FrameKey, PlayerProfileService.Data.Profile.SelectedFrameId ?? "none" },
-            { CardBackKey, PlayerProfileService.Data.Profile.SelectedCardBackId ?? "HotSeatBack_Ornate" }
+            { CardBackKey, PlayerProfileService.Data.Profile.SelectedCardBackId ?? "2clasic" }
         };
 
         PhotonNetwork.LocalPlayer.SetCustomProperties(props);

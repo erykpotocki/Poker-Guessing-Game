@@ -33,6 +33,19 @@ public class SeatUIView : MonoBehaviour
     private static Sprite circleRingSprite;
     private GameObject readyIndicator;
     private Image cosmeticFrame;
+    private RectTransform dealerTable;
+    public void PositionDealer(RectTransform table)
+    {
+        dealerTable=table; if(nickText!=null)nickText.gameObject.SetActive(false);
+        Rect bounds=table.rect;
+        PositionAvatarCenter(table.TransformPoint(bounds.center+new Vector2(0,bounds.height*.485f)));
+    }
+    public void PositionAvatarCenter(Vector3 worldCenter)
+    {
+        if(avatarImage==null){transform.position=worldCenter;return;}
+        transform.position+=worldCenter-avatarImage.rectTransform.TransformPoint(avatarImage.rectTransform.rect.center);
+    }
+    private TurnManager turnClock;
 
     public void SetReadyIndicator(bool ready)
     {
@@ -45,7 +58,8 @@ public class SeatUIView : MonoBehaviour
             rect.anchorMin = avatarImage.rectTransform.anchorMin;
             rect.anchorMax = avatarImage.rectTransform.anchorMax;
             rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = avatarImage.rectTransform.rect.size + Vector2.one * 10f;
+            rect.sizeDelta = Vector2.one*184f;
+            rect.SetAsFirstSibling();
             Image ring = readyIndicator.GetComponent<Image>();
             ring.sprite = circleRingSprite;
             ring.color = new Color(0.16f, 1f, 0.36f);
@@ -56,6 +70,10 @@ public class SeatUIView : MonoBehaviour
 
     private void LateUpdate()
     {
+        bool framed=cosmeticFrame!=null&&cosmeticFrame.gameObject.activeSelf;
+        float haloDiameter=framed?184f:120f+64f*.67f;
+        if(activeTurnHighlight!=null)activeTurnHighlight.sizeDelta=Vector2.one*haloDiameter;
+        if(readyIndicator!=null)((RectTransform)readyIndicator.transform).sizeDelta=Vector2.one*haloDiameter;
         if (readyIndicator != null && readyIndicator.activeSelf && avatarImage != null)
             readyIndicator.transform.position = avatarImage.rectTransform.TransformPoint(avatarImage.rectTransform.rect.center);
         if (avatarImage == null) return;
@@ -68,6 +86,12 @@ public class SeatUIView : MonoBehaviour
             nickText.rectTransform.position = avatarImage.rectTransform.TransformPoint(
                 avatarImage.rectTransform.rect.center + new Vector2(0f, -90f));
             nickText.rectTransform.sizeDelta = new Vector2(230f, 40f);
+            if(dealerTable!=null)
+            {
+                Rect bounds=dealerTable.rect;
+                nickText.rectTransform.position=dealerTable.TransformPoint(bounds.center+new Vector2(0,bounds.height*.35f));
+                nickText.rectTransform.sizeDelta=new Vector2(330,44);
+            }
             nickText.alignment = TextAlignmentOptions.Center;
             nickText.transform.SetAsLastSibling();
         }
@@ -97,11 +121,29 @@ public class SeatUIView : MonoBehaviour
             return;
 
         float pulse = 1f + Mathf.Abs(Mathf.Sin(Time.time * pulseSpeed)) * pulseScaleAmount;
-        activeTurnHighlight.localScale = highlightBaseScale * pulse;
+        if(turnClock==null)turnClock=FindFirstObjectByType<TurnManager>();
+        bool overtime=turnClock!=null && !turnClock.IsResolutionLocked && turnClock.CurrentTurnTimeLeft<=0;
+        var ring=activeTurnHighlight.GetComponent<Image>();
+        if(ring!=null)ring.color=overtime?new Color(1,.16f,.12f):new Color(1,.75f,.18f);
+        if(overtime)pulse=1f+.09f*Mathf.Abs(Mathf.Sin(Time.unscaledTime*6));
+        // Pulse opacity rather than diameter: scaling opens a gap around the avatar.
+        activeTurnHighlight.localScale = highlightBaseScale;
+        if(ring!=null){Color ink=ring.color;ink.a=.78f+.22f*Mathf.Abs(Mathf.Sin(Time.unscaledTime*(overtime?6:pulseSpeed)));ring.color=ink;}
     }
 
     public void Set(string nick, Sprite avatar)
     {
+        if(circularAvatarContent==null)ConfigureCircularAvatar();
+        if(avatarImage!=null)
+        {
+            avatarImage.overrideSprite=null;
+            avatarImage.sprite=circleMaskSprite;
+            avatarImage.type=Image.Type.Simple;
+            avatarImage.material=null;
+            var mask=avatarImage.GetComponent<Mask>();
+            if(mask!=null){mask.enabled=true;mask.showMaskGraphic=false;}
+        }
+        if(circularAvatarContent!=null){circularAvatarContent.maskable=true;circularAvatarContent.material=null;}
         if (nickText != null)
             nickText.text = nick;
 
@@ -130,7 +172,8 @@ public class SeatUIView : MonoBehaviour
 
     public void ApplyFrame(string frameId)
     {
-        bool enabled = frameId == "classic_wood";
+        Sprite frameSprite=LevelFrameCatalog.Resolve(frameId);
+        bool enabled = frameSprite!=null;
         if (!enabled)
         {
             if (cosmeticFrame != null) cosmeticFrame.gameObject.SetActive(false);
@@ -150,17 +193,23 @@ public class SeatUIView : MonoBehaviour
             cosmeticFrame.rectTransform.sizeDelta = new Vector2(154f,154f);
             cosmeticFrame.transform.SetSiblingIndex(avatarImage.transform.GetSiblingIndex()+1);
         }
-        if (cosmeticFrame != null) cosmeticFrame.gameObject.SetActive(cosmeticFrame.sprite != null);
+        if (cosmeticFrame != null) {cosmeticFrame.sprite=frameSprite;cosmeticFrame.gameObject.SetActive(frameSprite != null);}
     }
 
     public void ConfigureDealerCaption()
     {
         if (nickText == null || avatarImage == null) return;
+        avatarImage.rectTransform.sizeDelta=Vector2.one*136;
         RectTransform caption = nickText.rectTransform;
         caption.anchorMin = caption.anchorMax = new Vector2(0.5f, 0.5f);
         caption.anchoredPosition = avatarImage.rectTransform.anchoredPosition + new Vector2(0f, -90f);
         caption.sizeDelta = new Vector2(210f, 40f);
-        nickText.fontSize = 27f;
+        nickText.fontSize = 32f;
+        nickText.fontStyle = FontStyles.Bold;
+        nickText.textWrappingMode=TextWrappingModes.NoWrap;
+        var shadow=nickText.GetComponent<Shadow>();
+        if(shadow==null)shadow=nickText.gameObject.AddComponent<Shadow>();
+        shadow.effectColor=new Color(0,0,0,.8f);shadow.effectDistance=new Vector2(1,-2);
         nickText.enableAutoSizing = false;
         nickText.alignment = TextAlignmentOptions.Center;
         nickText.color = new Color(1f, 0.91f, 0.7f);
@@ -259,6 +308,8 @@ public class SeatUIView : MonoBehaviour
 
         Sprite currentAvatar = avatarImage.sprite;
         avatarImage.sprite = circleMaskSprite;
+        avatarImage.overrideSprite=null;
+        avatarImage.type=Image.Type.Simple;
         avatarImage.color = Color.white;
         avatarImage.preserveAspect = false;
 
@@ -288,6 +339,7 @@ public class SeatUIView : MonoBehaviour
         circularAvatarContent.color = Color.white;
         circularAvatarContent.preserveAspect = false;
         circularAvatarContent.raycastTarget = false;
+        if(circularAvatarContent.GetComponent<CircularAvatarMesh>()==null)circularAvatarContent.gameObject.AddComponent<CircularAvatarMesh>();
     }
 
     private void ConfigureCircularHighlight()
@@ -296,7 +348,7 @@ public class SeatUIView : MonoBehaviour
             return;
 
         EnsureCircleSprites();
-        activeTurnHighlight.sizeDelta = new Vector2(132f, 132f);
+        activeTurnHighlight.sizeDelta = new Vector2(184f, 184f);
         activeTurnHighlight.pivot = new Vector2(0.5f, 0.5f);
         activeTurnHighlight.SetAsFirstSibling();
         activeTurnHighlight.anchoredPosition = new Vector2(0f, 9f);
@@ -328,7 +380,9 @@ public class SeatUIView : MonoBehaviour
         Color[] ringPixels = new Color[size * size];
         Vector2 center = new Vector2((size - 1) * 0.5f, (size - 1) * 0.5f);
         float outerRadius = size * 0.49f;
-        float innerRadius = size * 0.42f;
+        // At 184 units the inner edge slightly overlaps the 120-unit avatar.
+        // The avatar and cosmetic frame render above this continuous halo.
+        float innerRadius = size * 0.30f;
 
         for (int y = 0; y < size; y++)
         {
@@ -354,3 +408,5 @@ public class SeatUIView : MonoBehaviour
             new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), 100f);
     }
 }
+
+

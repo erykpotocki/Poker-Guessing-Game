@@ -9,7 +9,7 @@ public class GameModeSelectUI : MonoBehaviour
 
     public const string BeginnerModeName = "Początkujący";
     public const string ClassicModeName = "Klasyczny";
-    public const string FastModeName = "Przyśpieszony";
+    public const string FastModeName = "Przyspieszony";
     public const string Mode420Name = "420";
 
     private RectTransform closeButtonRect;
@@ -198,13 +198,16 @@ public class GameModeSelectUI : MonoBehaviour
         lockRect.anchorMin = lockRect.anchorMax = new Vector2(0f, 0.5f);
         lockRect.anchoredPosition = new Vector2(42f, 0f);
         lockRect.sizeDelta = new Vector2(36f, 46f);
-        // UI geometry avoids depending on an emoji glyph in the menu font.
-        CreateLockPart(lockRect, "Body", new Vector2(0f, -7f), new Vector2(32f, 26f));
-        CreateLockPart(lockRect, "ShackleTop", new Vector2(0f, 19f), new Vector2(22f, 5f));
-        CreateLockPart(lockRect, "ShackleLeft", new Vector2(-9f, 11f), new Vector2(5f, 16f));
-        CreateLockPart(lockRect, "ShackleRight", new Vector2(9f, 11f), new Vector2(5f, 16f));
-        Image keyhole = CreateLockPart(lockRect, "Keyhole", new Vector2(0f, -7f), new Vector2(5f, 11f));
-        keyhole.color = new Color(0.15f, 0.07f, 0.04f);
+        DrawLock(lockRect);
+    }
+
+    public static void DrawLock(RectTransform lockRect)
+    {
+        // Vector geometry remains crisp at small cosmetic-tile sizes.
+        if(lockRect.GetComponent<CanvasRenderer>()==null)
+            lockRect.gameObject.AddComponent<CanvasRenderer>();
+        var graphic=lockRect.gameObject.AddComponent<RewardLockGraphic>();
+        graphic.raycastTarget=false;
     }
 
     private static Image CreateLockPart(Transform parent, string name, Vector2 position, Vector2 size)

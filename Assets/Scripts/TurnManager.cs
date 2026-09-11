@@ -793,7 +793,7 @@ public partial class TurnManager : MonoBehaviour, IOnEventCallback
 
         if (activePlayerOrder.Count <= 1)
         {
-            HandleGameOver();
+            HandleGameOver(false);
             yield break;
         }
 
@@ -929,8 +929,17 @@ public partial class TurnManager : MonoBehaviour, IOnEventCallback
         if (nextId == null) return null;
         List<CardSpriteEntry> ownCards = cardDealTest != null ? cardDealTest.GetCardsForPlayer(actorNumber) : new List<CardSpriteEntry>();
         List<CardSpriteEntry> supportingCards = MultiplayerHandRules.MatchingCards(currentId, ownCards, out bool proven);
+        if(LobbyBotRegistry.TryGetBot(actorNumber,out var difficulty)&&difficulty.Advanced)
+        {
+            int total=cardDealTest.GetAllDealtCards().Count;
+            float likelihood=AdvancedBotOdds.Estimate(currentId,ownCards,total);
+            if(!proven&&likelihood<.55f)return null;
+            if(truthfulIndex>currentIndex)return HandRankCatalog.GetDisplayName(truthfulId);
+            if(AdvancedBotOdds.Estimate(nextId,ownCards,total)<.35f&&UnityEngine.Random.value>.12f)return null;
+            return HandRankCatalog.GetDisplayName(nextId);
+        }
         // A beginner only considers its own hand, never opponents' hidden cards.
-        float checkChance = proven ? 0f : supportingCards.Count > 0 ? 0.12f : 0.22f;
+        float checkChance = proven ? 0f : supportingCards.Count > 0 ? 0.08f : 0.16f;
         if (UnityEngine.Random.value < checkChance) return null;
 
         if (truthfulIndex > currentIndex)
@@ -1398,7 +1407,7 @@ public partial class TurnManager : MonoBehaviour, IOnEventCallback
         return activePlayerOrder[0];
     }
 
-    private void HandleGameOver()
+    private void HandleGameOver(bool completedMatch=true)
     {
         isGameOver = true;
         isRoundWaitingForResolution = false;
@@ -1409,11 +1418,20 @@ public partial class TurnManager : MonoBehaviour, IOnEventCallback
         Sprite winnerAvatar = winnerActorNumber > 0 ? GetPlayerAvatarSprite(winnerActorNumber) : null;
 
         // Unlock progression only after the complete match; keep the frame unequipped.
-        if (PhotonNetwork.LocalPlayer != null && PhotonNetwork.CurrentRoom != null)
+        if (completedMatch && PhotonNetwork.LocalPlayer != null && PhotonNetwork.CurrentRoom != null)
         {
             TryGetSharedGameSeed(out int seed);
             bool localWon = winnerActorNumber == PhotonNetwork.LocalPlayer.ActorNumber;
-            if (PlayerProfileService.CompleteMatch(PhotonNetwork.CurrentRoom.Name + ":" + seed, localWon))
+            var rewardProps=PhotonNetwork.CurrentRoom.CustomProperties;
+            int bots=rewardProps.TryGetValue("rewardBots",out object botValue) && botValue is int botCount?botCount:0;
+            int duration=rewardProps.TryGetValue("rewardStartedMs",out object startValue) && startValue is int started
+                ?Mathf.Max(0,unchecked(PhotonNetwork.ServerTimestamp-started)/1000):0;
+            int humans=0;
+            int[] participants=rewardProps.TryGetValue("rewardActors",out object actorValue)?actorValue as int[]:null;
+            foreach(Player participant in PhotonNetwork.PlayerList)
+                if(!participant.IsInactive && (participants==null || System.Array.IndexOf(participants,participant.ActorNumber)>=0))humans++;
+            bool eligible=participants==null || System.Array.IndexOf(participants,PhotonNetwork.LocalPlayer.ActorNumber)>=0;
+            if (eligible && PlayerProfileService.CompleteMatch(PhotonNetwork.CurrentRoom.Name + ":" + seed, localWon,bots,humans,duration,LobbyBotRegistry.GetBots().Exists(bot=>bot.Advanced)))
             {
                 foreach (Player opponent in PhotonNetwork.PlayerList)
                 {

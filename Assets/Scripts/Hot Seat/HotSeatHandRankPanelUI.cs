@@ -137,6 +137,8 @@ public class HotSeatHandRankPanelUI : MonoBehaviour
 
         SetAllButtonsInteractable(true);
         ShowCategories();
+        Canvas.ForceUpdateCanvases();
+        foreach(TMP_Text label in GetComponentsInChildren<TMP_Text>(true))label.ForceMeshUpdate(true);
     }
 
     public void Close()

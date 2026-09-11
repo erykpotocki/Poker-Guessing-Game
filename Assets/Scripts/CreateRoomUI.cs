@@ -113,7 +113,7 @@ public class CreateRoomUI : MonoBehaviourPunCallbacks
             MaxPlayers = 6,
             IsVisible = false,
             IsOpen = true,
-            PlayerTtl = 300000,
+            PlayerTtl = 1800000,
             EmptyRoomTtl = 300000
         };
 

@@ -11,6 +11,7 @@ public class BackToMenu : MonoBehaviourPunCallbacks
     private Button cornerBackButton;
     private Rect lastSafeArea;
     private Vector2Int lastScreenSize;
+    private bool leaveForResume;
 
     private void Start()
     {
@@ -184,11 +185,15 @@ public class BackToMenu : MonoBehaviourPunCallbacks
     public void GoMainMenu()
     {
         HotSeatOrientationLock.LockPortrait();
-        ClearResumeData();
+        leaveForResume=PhotonNetwork.InRoom&&PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("gameStarted",out object started)&&started is bool playing&&playing&&
+            !(PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("gameEnded",out object ended)&&ended is bool finished&&finished);
+        NetworkBootstrap.PreserveRoomOnLeave=leaveForResume;
+        if(leaveForResume){PlayerPrefs.SetString(LastRoomCodePrefsKey,PhotonNetwork.CurrentRoom.Name);PlayerPrefs.SetInt(ResumePendingPrefsKey,1);PlayerPrefs.Save();}
+        else ClearResumeData();
 
         if (PhotonNetwork.InRoom)
         {
-            PhotonNetwork.LeaveRoom();
+            PhotonNetwork.LeaveRoom(leaveForResume);
             return;
         }
 
@@ -198,7 +203,7 @@ public class BackToMenu : MonoBehaviourPunCallbacks
     public override void OnLeftRoom()
     {
         HotSeatOrientationLock.LockPortrait();
-        ClearResumeData();
+        if(!leaveForResume)ClearResumeData();
         SceneManager.LoadScene("MainMenu");
     }
 

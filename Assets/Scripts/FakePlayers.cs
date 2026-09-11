@@ -11,6 +11,7 @@ public sealed class LobbyBotInfo
     public int ActorNumber;
     public string Name;
     public int AvatarIndex;
+    public bool Advanced;
 }
 
 public static class LobbyBotRegistry
@@ -34,7 +35,7 @@ public static class LobbyBotRegistry
         for (int i = 0; i < entries.Length; i++)
         {
             string[] parts = entries[i].Split('|');
-            if (parts.Length != 3 ||
+            if (parts.Length < 3 ||
                 !int.TryParse(parts[0], out int actorNumber) ||
                 !int.TryParse(parts[2], out int avatarIndex) ||
                 actorNumber < FirstBotActorNumber ||
@@ -47,7 +48,7 @@ public static class LobbyBotRegistry
             {
                 ActorNumber = actorNumber,
                 Name = parts[1],
-                AvatarIndex = Mathf.Max(0, avatarIndex)
+                AvatarIndex = Mathf.Max(0, avatarIndex), Advanced=parts.Length>3&&parts[3]=="1"
             });
         }
 
@@ -88,10 +89,19 @@ public static class LobbyBotRegistry
                 continue;
             }
 
-            entries.Add(bot.ActorNumber + "|" + bot.Name + "|" + Mathf.Max(0, bot.AvatarIndex));
+            entries.Add(bot.ActorNumber + "|" + bot.Name + "|" + Mathf.Max(0, bot.AvatarIndex)+"|"+(bot.Advanced?"1":"0"));
         }
 
         return string.Join(";", entries);
+    }
+    public static void ToggleDifficulty(int actor)
+    {
+        if(!PhotonNetwork.IsMasterClient||PhotonNetwork.CurrentRoom==null)return;
+        var bots=GetBots();var bot=bots.Find(b=>b.ActorNumber==actor);if(bot==null)return;
+        bot.Advanced=!bot.Advanced;bot.AvatarIndex=bot.Advanced?8:0;
+        string value=Serialize(bots);
+        PhotonNetwork.CurrentRoom.SetCustomProperties(new Hashtable{{RoomPropertyKey,value}});
+        PhotonNetwork.CurrentRoom.CustomProperties[RoomPropertyKey]=value;
     }
 }
 

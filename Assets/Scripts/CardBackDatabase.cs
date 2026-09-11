@@ -27,6 +27,7 @@ public class CardBackDatabase : MonoBehaviour
 
     private Sprite[] GetAvailableBackSprites()
     {
+        if(Online||gameObject.scene.name=="Game")return OnlineSprites;
         if (resourceBackSprites == null)
         {
             Texture2D[] textures = Resources.LoadAll<Texture2D>("CardBacks");

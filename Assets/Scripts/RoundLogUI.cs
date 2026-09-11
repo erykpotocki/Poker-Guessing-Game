@@ -73,9 +73,16 @@ public class RoundLogUI : MonoBehaviour
         rect.localScale = Vector3.one;
         // Keep the log in the narrow safe gap at the upper-left, clear of the
         // first seat and the table. It must never cover another player's avatar.
-        rect.sizeDelta = new Vector2(350f,170f);
+        float width=Mathf.Clamp(root.rect.width*.30f,400,620);
+        float textHeight=logText!=null?logText.GetPreferredValues(logText.text,width-horizontalPadding*2,0f).y:0;
+        rect.sizeDelta = new Vector2(width,Mathf.Clamp(textHeight+topPadding+bottomPadding,44f,138f));
+        if(viewportRoot!=null && viewportRoot!=rect)
+        {
+            viewportRoot.anchorMin=Vector2.zero;viewportRoot.anchorMax=Vector2.one;
+            viewportRoot.offsetMin=viewportRoot.offsetMax=Vector2.zero;
+        }
         rect.anchoredPosition = new Vector2(Screen.safeArea.xMin * root.rect.width / Screen.width + 8f,
-            -(Screen.height - Screen.safeArea.yMax) * root.rect.height / Screen.height - 76f);
+            -(Screen.height - Screen.safeArea.yMax) * root.rect.height / Screen.height - 108f);
     }
 
     public void ClearLog()

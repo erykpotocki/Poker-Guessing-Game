@@ -13,6 +13,16 @@
   let desired = 'portrait', bootVisible = true;
   let logicalWidth = 1, logicalHeight = 1, rotation = 0;
   let lastViewport = null, pendingLock = null, lockedOrientation = null;
+  let settleFrame = 0, settleUntil = 0;
+  function settleViewport() {
+    settleUntil = performance.now() + 650;
+    if (settleFrame) return;
+    function step() {
+      refresh();
+      settleFrame = performance.now() < settleUntil ? requestAnimationFrame(step) : 0;
+    }
+    settleFrame = requestAnimationFrame(step);
+  }
   const isEditing = () => /^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName || '');
 
   // Unity uses this rect for render size AND input offset. CSS rotation alone
@@ -28,7 +38,10 @@
     const editing = isEditing();
     // The software keyboard must not be mistaken for a landscape device.
     const viewport = editing && lastViewport ? lastViewport : {
-      width: Math.max(1, window.innerWidth), height: Math.max(1, window.innerHeight)
+      width: Math.max(1, window.visualViewport?.width ?? window.innerWidth),
+      height: Math.max(1, window.visualViewport?.height ?? window.innerHeight),
+      x: window.visualViewport?.offsetLeft || 0,
+      y: window.visualViewport?.offsetTop || 0
     };
     if (!editing) lastViewport = viewport;
     const wanted = bootVisible ? 'portrait' : desired;
@@ -50,14 +63,15 @@
     logicalHeight = rotation ? availableWidth : availableHeight;
     if (!mobile) {
       const ratio = wantsLandscape ? 16 / 9 : 9 / 16;
-      logicalWidth = Math.min(availableWidth, availableHeight * ratio);
+      logicalWidth = Math.min(logicalWidth, logicalHeight * ratio);
       logicalHeight = logicalWidth / ratio;
     }
     container.style.width = logicalWidth + 'px';
     container.style.height = logicalHeight + 'px';
-    container.style.left = (left + availableWidth / 2) + 'px';
-    container.style.top = (top + availableHeight / 2) + 'px';
+    container.style.left = (viewport.x + left + availableWidth / 2) + 'px';
+    container.style.top = (viewport.y + top + availableHeight / 2) + 'px';
     container.style.transform = 'translate(-50%, -50%) rotate(' + rotation + 'deg)';
+    container.style.transition = 'none';
     container.style.setProperty('--view-width', logicalWidth + 'px');
     container.style.setProperty('--view-height', logicalHeight + 'px');
     container.dataset.orientation = wanted;
@@ -139,7 +153,7 @@
     refresh
   };
   function resume() { lockedOrientation = null; refresh(); tryLock(); }
-  ['resize', 'orientationchange'].forEach(name => window.addEventListener(name, () => { refresh(); tryLock(); }));
+  ['resize', 'orientationchange'].forEach(name => window.addEventListener(name, () => { refresh(); settleViewport(); tryLock(); }));
   ['pageshow', 'focus'].forEach(name => window.addEventListener(name, resume));
   document.addEventListener('visibilitychange', () => { if (!document.hidden) resume(); });
   document.addEventListener('pointerup', tryLock);
@@ -148,7 +162,7 @@
   document.addEventListener('focusout', () => requestAnimationFrame(() => { refresh(); tryLock(); }));
   window.visualViewport?.addEventListener('resize', refresh);
   window.visualViewport?.addEventListener('scroll', refresh);
-  screen.orientation?.addEventListener('change', refresh);
+  screen.orientation?.addEventListener('change', () => { refresh(); settleViewport(); });
   refresh(); tryLock();
   // Initial HTML loading keeps its portrait image. Random artwork is used only
   // by Unity's multiplayer loading screen after START.

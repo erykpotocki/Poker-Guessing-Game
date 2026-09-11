@@ -86,6 +86,7 @@ public class CardDealTest : MonoBehaviour
     {
         public int StablePlayerId;
         public Vector2 EndPosition;
+        public float Rotation;
     }
 
     private void Awake()
@@ -445,6 +446,7 @@ public class CardDealTest : MonoBehaviour
 
             RectTransform rect = spawnedCard.GetComponent<RectTransform>();
             rect.anchoredPosition = target.EndPosition;
+            rect.localRotation=Quaternion.Euler(0,0,target.Rotation);
 
             DealtCardView dealtCardView = rect.GetComponent<DealtCardView>();
             if (dealtCardView == null)
@@ -605,6 +607,7 @@ public class CardDealTest : MonoBehaviour
             }
 
             yield return StartCoroutine(AnimateCardTo(cardRect, dealerPos, orderedTargets[i].EndPosition));
+            cardRect.localRotation=Quaternion.Euler(0,0,orderedTargets[i].Rotation);
             ShowFrontForDealIndex(cardRect, shuffledCards, i, orderedTargets[i].StablePlayerId);
             yield return new WaitForSeconds(delayBetweenDeals);
         }
@@ -1086,7 +1089,8 @@ public class CardDealTest : MonoBehaviour
                 orderedTargets.Add(new DealTarget
                 {
                     StablePlayerId = player.StablePlayerId,
-                    EndPosition = endPos
+                    EndPosition = endPos,
+                    Rotation = PhotonNetwork.LocalPlayer!=null && player.StablePlayerId==PhotonNetwork.LocalPlayer.ActorNumber?0:-(cardIndexForPlayer-(player.CardCount-1)*.5f)*12
                 });
 
                 dealtSoFarByPlayerId[player.StablePlayerId] = cardIndexForPlayer + 1;
@@ -1098,10 +1102,10 @@ public class CardDealTest : MonoBehaviour
 
     private Vector2 CalculateCardEndPosition(PlayerDealInfo player, int cardIndexForPlayer)
     {
-        Vector2 lateralDir = new Vector2(-player.InwardDir.y, player.InwardDir.x);
-        float centeredOffset = (cardIndexForPlayer - ((player.CardCount - 1) * 0.5f)) * multiCardSpread;
-
-        return player.CardTargetPos + (player.InwardDir * inwardOffset) + (lateralDir * centeredOffset);
+        if(PhotonNetwork.LocalPlayer!=null && player.StablePlayerId==PhotonNetwork.LocalPlayer.ActorNumber)
+            return player.CardTargetPos+new Vector2(155+cardIndexForPlayer*100,90);
+        float index=cardIndexForPlayer-(player.CardCount-1)*.5f;
+        return player.CardTargetPos+player.InwardDir*Mathf.Max(160,inwardOffset)+new Vector2(index*32,-Mathf.Abs(index)*8);
     }
 
     private int FindFirstReceiverIndexAfterDealer(List<PlayerDealInfo> players, List<int> sharedSeatOrder)
@@ -1335,9 +1339,10 @@ public class CardDealTest : MonoBehaviour
             if (cardRect == null)
                 continue;
 
-            Vector2 pos = cardRect.anchoredPosition;
-            pos.x = startX + (i * spacing);
-            cardRect.anchoredPosition = pos;
+            foreach(var seat in seatOccupants)
+                if(seat.Value==localPlayerId){cardRect.anchoredPosition=GetLocalPointInParent(cardsParent,seat.Key)+new Vector2(155+i*100,90);break;}
+            cardRect.localRotation=Quaternion.identity;
         }
     }
 }
+

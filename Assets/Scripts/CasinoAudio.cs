@@ -15,6 +15,12 @@ public sealed class CasinoAudio : MonoBehaviour
     private int currentTrack = -1;
     private float fade = 1f, lastClick = -1f;
     private Coroutine changeRoutine;
+    private float urgencyUntil, nextUrgencyCue;
+    public static void SetUrgency(bool active)
+    {
+        if(instance==null)return;
+        instance.urgencyUntil=active?Time.unscaledTime+.25f:0;
+    }
     public static bool IsGameplay => SceneManager.GetActiveScene().name == "Game" || SceneManager.GetActiveScene().handle == localGameplayScene;
     public static int SelectedTrack => IsGameplay ? 1 : 0;
     public static void BeginLocalGame() => localGameplayScene = SceneManager.GetActiveScene().handle;
@@ -47,6 +53,9 @@ public sealed class CasinoAudio : MonoBehaviour
     }
     private void Update()
     {
+        bool urgent=IsGameplay && Time.unscaledTime<urgencyUntil;
+        music.pitch=Mathf.MoveTowards(music.pitch,urgent?1.25f:1f,Time.unscaledDeltaTime);
+        if(urgent && Time.unscaledTime>=nextUrgencyCue){nextUrgencyCue=Time.unscaledTime+1.5f;PlayLocalTurn();}
         int selected = SelectedTrack;
         if (selected == currentTrack) return;
         currentTrack = selected;

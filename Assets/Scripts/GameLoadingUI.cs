@@ -12,6 +12,7 @@ public class GameLoadingUI : MonoBehaviour
     [SerializeField] private TMP_Text tipText;
     private RawImage artwork;
     private RectTransform spinner;
+    private RectTransform progressFill;
     private Texture2D ringTexture;
     private Sprite ringSprite;
     private bool showing;
@@ -36,7 +37,7 @@ public class GameLoadingUI : MonoBehaviour
             if (request.result != UnityWebRequest.Result.Success) yield break;
             if (downloadedArtwork != null) Destroy(downloadedArtwork);
             downloadedArtwork = DownloadHandlerTexture.GetContent(request);
-            if (artwork != null) artwork.texture = downloadedArtwork;
+            if (artwork != null) { artwork.texture = downloadedArtwork; artwork.enabled=true; }
         }
     }
     private float targetProgress, displayedProgress;
@@ -81,7 +82,6 @@ public class GameLoadingUI : MonoBehaviour
     private void BuildVisuals()
     {
         if (loadingText != null) loadingText.gameObject.SetActive(true);
-        if (tipText != null) tipText.gameObject.SetActive(false);
         if (artwork != null) return;
 
         RectTransform panel = loadingPanel.GetComponent<RectTransform>();
@@ -99,7 +99,26 @@ public class GameLoadingUI : MonoBehaviour
         artwork = background.GetComponent<RawImage>();
         Stretch(artwork.rectTransform);
         artwork.color = new Color(0.68f, 0.68f, 0.68f, 1f);
+        artwork.enabled=false; // A RawImage without a texture renders a grey rectangle.
         artwork.raycastTarget = false;
+        var track=new GameObject("LoadingProgressTrack",typeof(RectTransform),typeof(Image)).GetComponent<RectTransform>();
+        track.SetParent(panel,false);track.anchorMin=new Vector2(.25f,.625f);track.anchorMax=new Vector2(.75f,.625f);
+        track.sizeDelta=new Vector2(0,18);track.anchoredPosition=Vector2.zero;
+        track.GetComponent<Image>().color=new Color(.015f,.035f,.025f,.95f);track.GetComponent<Image>().raycastTarget=false;
+        var border=track.gameObject.AddComponent<Outline>();border.effectColor=new Color(.85f,.65f,.25f);border.effectDistance=new Vector2(2,-2);
+        progressFill=new GameObject("LoadingProgressFill",typeof(RectTransform),typeof(Image)).GetComponent<RectTransform>();
+        progressFill.SetParent(track,false);progressFill.anchorMin=Vector2.zero;progressFill.anchorMax=new Vector2(0,1);
+        progressFill.offsetMin=progressFill.offsetMax=Vector2.zero;
+        progressFill.GetComponent<Image>().color=new Color(1,.78f,.3f);progressFill.GetComponent<Image>().raycastTarget=false;
+        CreateLoadingCaption(panel,"POKER ZGADYWANY",.77f,.89f,48);
+        string[] tips={
+            "Sprawdzasz układ we wszystkich kartach graczy — nie tylko w swojej ręce.",
+            "Para asów wystarczy do deklaracji A A. Pozostałe karty nie muszą do niej pasować.",
+            "Full wymaga trzech kart jednej wartości i dwóch kart innej wartości.",
+            "Jeśli sprawdzany układ istnieje, przegrywa sprawdzający. Jeśli nie — ostatni deklarujący."
+        };
+        if(tipText!=null)tipText.gameObject.SetActive(false);
+        tipText=CreateLoadingCaption(panel,tips[Random.Range(0,tips.Length)],.37f,.55f,30);
 
         CreateRingSprite();
         GameObject ring = new GameObject("LoadingSpinner", typeof(RectTransform), typeof(Image));
@@ -133,6 +152,7 @@ public class GameLoadingUI : MonoBehaviour
         loadingPanel.transform.SetAsLastSibling();
         elapsed += Time.unscaledDeltaTime;
         displayedProgress = Mathf.MoveTowards(displayedProgress, targetProgress, Time.unscaledDeltaTime * .4f);
+        if(progressFill!=null)progressFill.anchorMax=new Vector2(displayedProgress,1);
         if (loadingText != null) loadingText.text = stage + " · " + Mathf.FloorToInt(displayedProgress * 100f) + "%";
         spinner.localRotation = Quaternion.Euler(0f, 0f, -elapsed * 210f);
         Rect rect = artwork.rectTransform.rect;
@@ -145,6 +165,19 @@ public class GameLoadingUI : MonoBehaviour
         artwork.uvRect = screenAspect > artAspect
             ? new Rect(0f, (1f - artAspect / screenAspect) * 0.5f, 1f, artAspect / screenAspect)
             : new Rect((1f - screenAspect / artAspect) * 0.5f, 0f, screenAspect / artAspect, 1f);
+    }
+
+    private TMP_Text CreateLoadingCaption(Transform parent,string value,float bottom,float top,float fontSize)
+    {
+        var box=new GameObject("LoadingCaption",typeof(RectTransform),typeof(Image)).GetComponent<RectTransform>();
+        box.SetParent(parent,false);box.anchorMin=new Vector2(.17f,bottom);box.anchorMax=new Vector2(.83f,top);box.offsetMin=box.offsetMax=Vector2.zero;
+        box.GetComponent<Image>().color=new Color(.01f,.02f,.015f,.72f);box.GetComponent<Image>().raycastTarget=false;
+        var text=new GameObject("Caption",typeof(RectTransform),typeof(TextMeshProUGUI)).GetComponent<TMP_Text>();
+        text.transform.SetParent(box,false);text.rectTransform.anchorMin=Vector2.zero;text.rectTransform.anchorMax=Vector2.one;
+        text.rectTransform.offsetMin=new Vector2(22,10);text.rectTransform.offsetMax=new Vector2(-22,-10);
+        text.text=value;text.fontSize=fontSize;text.enableAutoSizing=true;text.fontSizeMin=20;text.fontSizeMax=fontSize;
+        text.alignment=TextAlignmentOptions.Center;text.color=new Color(1,.88f,.62f);text.raycastTarget=false;
+        return text;
     }
 
     private static void Stretch(RectTransform rect)

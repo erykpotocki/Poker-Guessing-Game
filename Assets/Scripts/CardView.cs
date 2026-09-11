@@ -30,9 +30,9 @@ public class CardView : MonoBehaviour
 
         cardImage.sprite = backSprite;
         cardImage.color = Color.white;
-        // The new back is portrait-oriented. Filling the same card frame as the
-        // former purple back prevents it from appearing unusually narrow.
-        cardImage.preserveAspect = false;
+        // Keep the portrait artwork proportional inside the existing card
+        // bounds. Front-card geometry remains unchanged when revealed.
+        cardImage.preserveAspect = true;
         cardImage.enabled = true;
     }
 }

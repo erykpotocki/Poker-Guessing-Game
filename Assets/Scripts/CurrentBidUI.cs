@@ -34,7 +34,7 @@ public class CurrentBidUI : MonoBehaviour
         if (tableAnchor == null)
         {
             Canvas canvas = currentBidText.GetComponentInParent<Canvas>();
-            if (canvas != null) tableAnchor = canvas.rootCanvas.transform.Find("TableCenter") as RectTransform;
+            if (canvas != null) tableAnchor = canvas.rootCanvas.transform.Find("TablePresentation/Table") as RectTransform;
         }
         if (tableAnchor == null) return;
         RectTransform rect = currentBidText.rectTransform;
@@ -204,3 +204,4 @@ public class CurrentBidUI : MonoBehaviour
         return openTags + content + closeTags;
     }
 }
+

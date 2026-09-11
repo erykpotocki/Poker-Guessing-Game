@@ -4,11 +4,26 @@ using PokerProfile;
 
 public static class PlayerProfileService
 {
+#if UNITY_WEBGL && !UNITY_EDITOR
+    [System.Runtime.InteropServices.DllImport("__Internal")] private static extern string PokerLoadProfile();
+    [System.Runtime.InteropServices.DllImport("__Internal")] private static extern int PokerSaveProfile(string json);
+#endif
     private sealed class PrefsStore : IProfileStore
     {
-        public string Load() => PlayerPrefs.GetString("playerProfile.v1", "");
+        public string Load()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            string browserSave = PokerLoadProfile();
+            if (!string.IsNullOrEmpty(browserSave)) return browserSave;
+#endif
+            return PlayerPrefs.GetString("playerProfile.v1", "");
+        }
         public void Save(string json)
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // Synchronous browser copy survives closing the tab before IndexedDB finishes.
+            if (PokerSaveProfile(json) == 0) Debug.LogWarning("Zapis przeglądarki niedostępny; używam zapisu Unity.");
+#endif
             PlayerPrefs.SetString("playerProfile.backup",PlayerPrefs.GetString("playerProfile.v1",""));
             PlayerPrefs.SetString("playerProfile.v1",json); PlayerPrefs.Save();
         }
@@ -16,6 +31,7 @@ public static class PlayerProfileService
     private static IProfileStore store = new PrefsStore();
     private static PlayerSave current;
     public static event Action Changed;
+    public static event Action PurchaseCompleted;
     public static PlayerSave Data
     {
         get
@@ -36,6 +52,13 @@ public static class PlayerProfileService
             current.Wallet ??= new Wallet();
             current.Statistics ??= new Statistics();
             current.Progression ??= new Progression();
+            if(current.Progression.CurveVersion==0)
+            {
+                long oldXp=Math.Max(0,current.Progression.Experience);
+                int oldLevel=1+(int)(oldXp/100);
+                current.Progression.Experience=Progression.Threshold(oldLevel)+(oldXp%100)*(100L+50L*(oldLevel-1))/100;
+                current.Progression.CurveVersion=1;
+            }
             current.Daily ??= new MissionPeriod();
             current.Weekly ??= new MissionPeriod();
             current.Wheel ??= new WheelState();
@@ -44,6 +67,12 @@ public static class PlayerProfileService
             current.Receipts ??= new System.Collections.Generic.List<string>();
             current.Opponents ??= new System.Collections.Generic.List<OpponentRecord>();
             current.PendingUnlocks ??= new System.Collections.Generic.List<PendingUnlock>();
+            ProgressionRules.Own(current.Inventory.OwnedCardBacks,"2clasic");
+            if((current.Profile.SelectedCardBackId??"").StartsWith("HotSeatBack_")||string.IsNullOrEmpty(current.Profile.SelectedCardBackId))current.Profile.SelectedCardBackId="2clasic";
+            // Old wheel rewards used the global presentation queue. Keep the
+            // owned items, but discard their duplicate notification on upgrade.
+            current.PendingUnlocks.RemoveAll(item => item.Category == "avatar" &&
+                (item.ItemId ?? "").StartsWith("download:") && string.IsNullOrEmpty(item.Source));
             for (int i = 0; i < 10; i++) ProgressionRules.Own(current.Inventory.OwnedAvatars,"avatar_"+i);
             ProgressionRules.RefreshPeriods(current,DateTime.UtcNow);
             return current;
@@ -61,6 +90,7 @@ public static class PlayerProfileService
         if (category == "avatar" && Data.Inventory.OwnedAvatars.Contains(id)) Data.Profile.SelectedAvatarId = id;
         else if (category == "frame" && (id == "none" || Data.Inventory.OwnedFrames.Contains(id))) Data.Profile.SelectedFrameId = id;
         else if (category == "back" && Data.Inventory.OwnedCardBacks.Contains(id)) Data.Profile.SelectedCardBackId = id;
+        else if (category == "offlineBack" && id.StartsWith("HotSeatBack_")) Data.Profile.SelectedOfflineCardBackId = id;
         else return false;
         Save(); return true;
     }
@@ -76,14 +106,15 @@ public static class PlayerProfileService
         }
     }
     public static string AvatarId(int index, Sprite sprite) => index < 10 ? "avatar_"+index : "download:"+sprite.name;
-    public static bool ShopAvailable => false;
-    public static bool CompleteMatch(string id,bool won,int bots=0,int humans=1,int durationSeconds=0)
+    public static bool ShopAvailable => true;
+    public static bool CompleteMatch(string id,bool won,int bots=0,int humans=1,int durationSeconds=0,bool advanced=false)
     {
         if ((id??"").StartsWith("hotseat:",StringComparison.OrdinalIgnoreCase)) return false;
         int minutes = Mathf.Clamp(durationSeconds / 60,0,20);
         int coins = Mathf.Clamp(10 + Mathf.Clamp(bots,0,5)*10 + minutes*7,10,200);
+        if(won&&advanced)coins=Mathf.RoundToInt(coins*1.15f);
         int xp = Mathf.Clamp(15 + Mathf.Clamp(bots,0,5)*5 + minutes*3 + (won?10:0),15,100);
-        bool completed = ProgressionRules.CompleteMatch(Data,id,won,DateTime.UtcNow,coins,xp,humans>=2);
+        bool completed = ProgressionRules.CompleteMatch(Data,id,won,DateTime.UtcNow,coins,xp,humans>=2,advanced);
         if (completed)
         {
             Save();
@@ -100,18 +131,19 @@ public static class PlayerProfileService
         if (Data.PendingUnlocks.Count == 0) return;
         Data.PendingUnlocks.RemoveAt(0); Save();
     }
-    public static bool BuyWithDiamonds(string category,string id,int price,string title)
+    public static bool BuyWithDiamonds(string category,string id,int price,string title) => BuyCosmetic(category,id,true);
+    public static bool BuyCosmetic(string category,string id,bool diamonds)
     {
-        if (!ShopAvailable) return false;
-        if (price < 0 || Data.Wallet.RewardCurrency < price) return false;
-        bool owned = category == "avatar" ? Data.Inventory.OwnedAvatars.Contains(id) :
-            category == "back" ? Data.Inventory.OwnedCardBacks.Contains(id) : Data.Inventory.OwnedFrames.Contains(id);
-        if (owned) return false;
-        Data.Wallet.RewardCurrency -= price;
-        ProgressionRules.Unlock(Data,category,id,title);
-        Save(); return true;
-    }
-    public static void RecordOpponentMatch(string profileId,string nickname,bool localWon)
+        var offer=CosmeticCatalog.Get(category,id);
+        if(!offer.Purchasable||CosmeticCatalog.Owned(category,id))return false;
+        if(category=="frame"&&!CosmeticCatalog.CanUnlockFrame(Data,id))return false;
+        if(!offer.Both && (diamonds?offer.Diamonds:offer.Gold)<=0)return false;
+        int gold=offer.Both||!diamonds?offer.Gold:0;
+        int gems=offer.Both||diamonds?offer.Diamonds:0;
+        if(Data.Wallet.Coins<gold||Data.Wallet.RewardCurrency<gems)return false;
+        Data.Wallet.Coins-=gold;Data.Wallet.RewardCurrency-=gems;
+        ProgressionRules.Unlock(Data,category,id,offer.Title,"shop");Save();PurchaseCompleted?.Invoke();return true;
+    }    public static void RecordOpponentMatch(string profileId,string nickname,bool localWon)
     {
         if (string.IsNullOrWhiteSpace(profileId)) profileId = "nick:" + (nickname ?? "Gracz");
         if (Data.Opponents == null) Data.Opponents = new System.Collections.Generic.List<OpponentRecord>();
@@ -260,6 +292,15 @@ public static class PlayerProfileService
         if(changed)Save();
     }
     public static bool ClaimMission(bool weekly,string kind) { bool result = ProgressionRules.ClaimMission(Data,weekly,kind,DateTime.UtcNow); if (result) Save(); return result; }
+    public static void GrantCompletedAdSpin()
+    {
+        RefreshSpinCharges(DateTime.UtcNow);
+        if(Data.Wheel.Charges>=3)return;
+        Data.Wheel.Charges++;
+        Data.Statistics.AdsWatched++;
+        if(Data.Wheel.Charges==3)Data.Wheel.NextFreeUtcTicks=0;
+        Save();
+    }
     private static bool adInFlight;
     public static void RequestRewardedAd(IRewardedAdProvider provider,AdReward reward,Action<AdOutcome> done)
     {
@@ -279,3 +320,5 @@ public static class PlayerProfileService
         catch (Exception) { adInFlight = false; if (!completed) done?.Invoke(AdOutcome.Failed); }
     }
 }
+
+

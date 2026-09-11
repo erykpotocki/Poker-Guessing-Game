@@ -127,6 +127,7 @@ public class HotSeatSetupUI : MonoBehaviour
 
     private void Start()
     {
+        ProfileTestTools.InstallHotSeatSettings(GetComponentInParent<Canvas>());
         PokerButtonTheme.EnsureController();
 
         addPlayerButton.onClick.AddListener(AddPlayer);
@@ -498,6 +499,7 @@ public class HotSeatSetupUI : MonoBehaviour
             "NACIŚNIJ PONOWNIE, ŻEBY ZAKRYĆ";
 
         EnableTurnActionsAfterCardReveal();
+        HotSeatCardFace.Show(cardImage,card);
     }
 
     private void ShowCurrentPlayerHeading(HotSeatPlayer player)
@@ -515,6 +517,7 @@ public class HotSeatSetupUI : MonoBehaviour
         Color fallbackColor,
         Color fallbackTextColor)
     {
+        HotSeatCardFace.Clear(cardImage);
         ClearRoundResultObjects();
         ClearExtraCardImages();
         EnsureCardText();
@@ -545,6 +548,7 @@ public class HotSeatSetupUI : MonoBehaviour
     // recognise every card without filling the entire portrait screen.
     private void ShowPlayerCardSprites(HotSeatPlayer player)
     {
+        HotSeatCardFace.Clear(cardImage);
         List<Sprite> sprites = new List<Sprite>();
         foreach (CardSpriteEntry card in player.Cards)
         {
@@ -556,7 +560,7 @@ public class HotSeatSetupUI : MonoBehaviour
             sprites.Add(sprite);
         }
 
-        ShowCardFan(sprites);
+        ShowCardFan(sprites,player.Cards);
     }
 
     private void ShowPlayerCardBacks(int cardCount, Sprite backSprite)
@@ -568,7 +572,7 @@ public class HotSeatSetupUI : MonoBehaviour
         ShowCardFan(sprites);
     }
 
-    private void ShowCardFan(List<Sprite> sprites)
+    private void ShowCardFan(List<Sprite> sprites,List<CardSpriteEntry> faces=null)
     {
         ClearRoundResultObjects();
         ClearExtraCardImages();
@@ -606,6 +610,8 @@ public class HotSeatSetupUI : MonoBehaviour
             image.sprite = sprite;
             image.color = sprite != null ? Color.white : cardFrontColor;
             image.preserveAspect = false;
+            HotSeatCardFace.Clear(image);
+            if(faces!=null && i<faces.Count) HotSeatCardFace.Show(image,faces[i]);
 
             if (i > 0)
                 extraCardImages.Add(image);
@@ -956,6 +962,7 @@ public class HotSeatSetupUI : MonoBehaviour
             return;
 
         reveal.Image.sprite = reveal.FrontSprite;
+        HotSeatCardFace.Show(reveal.Image,reveal.Card);
         reveal.Image.color = reveal.FrontSprite != null
             ? Color.white
             : cardFrontColor;
@@ -1265,12 +1272,19 @@ public class HotSeatSetupUI : MonoBehaviour
             lastDeclarerIndex < 0)
             return;
 
-        if (turnManager != null)
-            turnManager.StopTurn();
-
         string declaredRank = bidController != null
             ? bidController.CurrentBid
             : string.Empty;
+
+        if(string.IsNullOrEmpty(FindHandId(declaredRank)))
+        {
+            Debug.LogError("Hot Seat: nierozpoznany układ: "+declaredRank);
+            instructionText.text="Nie udało się odczytać układu. Wybierz go ponownie.";
+            return;
+        }
+
+        if (turnManager != null)
+            turnManager.StopTurn();
 
         bool declaredRankExists =
             EvaluateDeclaredRankExists(declaredRank);
@@ -1285,12 +1299,6 @@ public class HotSeatSetupUI : MonoBehaviour
 
         HotSeatPlayer loser = players[loserIndex];
         bool eliminated = ApplyLoss(loser);
-
-        if (GetActivePlayerCount() <= 1)
-        {
-            ShowGameOver();
-            return;
-        }
 
         HotSeatPlayer roundWinner = players[winnerIndex];
         string result =
@@ -1709,7 +1717,7 @@ public class HotSeatSetupUI : MonoBehaviour
             : 0;
 
         if (backCount > 0)
-            cardBackIndex = Random.Range(0, backCount);
+            cardBackIndex = cardBackDatabase.FindBackIndex(PlayerProfileService.Data.Profile.SelectedOfflineCardBackId);
     }
 
     private bool ApplyLoss(HotSeatPlayer player)
@@ -1738,41 +1746,23 @@ public class HotSeatSetupUI : MonoBehaviour
         return true;
     }
 
-    private void ShowRoundResult(
-        string result,
-        string declaredRank,
-        bool declaredRankExists)
+    private void ShowRoundResult(string result,string declaredRank,bool declaredRankExists)
     {
-        currentPhase = HotSeatPhase.RoundResult;
-        cardVisible = false;
-        cardPanel.SetActive(true);
-
-        currentPlayerNameText.text = "SPRAWDZANIE UKŁADU";
-        ShowCardSprite(
-            null,
-            "",
-            cardFrontColor,
-            Color.black
-        );
-
-        string handId = FindHandId(declaredRank);
-        ShowRoundCards();
-        cardImage.color = new Color(0.018f, 0.085f, 0.060f, .97f);
-
-        instructionText.text =
-            "SPRAWDZANY UKŁAD:\n" +
-            "<color=#F2C14E>" + declaredRank.ToUpper() + "</color>\n\n" +
-            "ODKRYWAM KARTY…";
-
-        roundRevealInProgress = true;
-        roundRevealCoroutine = StartCoroutine(
-            RevealCheckedHandRoutine(
-                handId,
-                declaredRank,
-                declaredRankExists,
-                result
-            )
-        );
+        Canvas reviewCanvas=cardImage.GetComponentInParent<Canvas>(true);
+        currentPhase=HotSeatPhase.RoundResult;
+        cardVisible=false;
+        cardPanel.SetActive(false);
+        var hands=new List<HotSeatReviewUI.Hand>();
+        for(int step=0;step<players.Count;step++)
+        {
+            var player=players[(starterIndex+step)%players.Count];
+            if(player.Cards.Count>0)hands.Add(new HotSeatReviewUI.Hand{Name=player.Name,Cards=new List<CardSpriteEntry>(player.Cards)});
+        }
+        HotSeatReviewUI.Show(reviewCanvas,hands,FindHandId(declaredRank),declaredRank,result,
+            cardBackDatabase.GetBackSprite(cardBackIndex),()=>{
+                if(GetActivePlayerCount()<=1)ShowGameOver();
+                else StartNewRound(pendingNextRoundStarterIndex);
+            });
     }
 
     private void ShowRoundPause()
@@ -1930,86 +1920,10 @@ public class HotSeatSetupUI : MonoBehaviour
         return EvaluateCardsForHand(handId, allCards);
     }
 
-    private static bool EvaluateCardsForHand(
-        string handId,
-        IEnumerable<CardSpriteEntry> cards)
+    private static bool EvaluateCardsForHand(string handId,IEnumerable<CardSpriteEntry> cards)
     {
-        if (string.IsNullOrEmpty(handId) || cards == null)
-            return false;
-
-        Dictionary<CardRank, int> rankCounts =
-            new Dictionary<CardRank, int>();
-        Dictionary<CardSuit, HashSet<CardRank>> suitRanks =
-            new Dictionary<CardSuit, HashSet<CardRank>>();
-
-        foreach (CardSpriteEntry card in cards)
-        {
-            if (card == null)
-                continue;
-
-            if (!rankCounts.ContainsKey(card.rank))
-                rankCounts[card.rank] = 0;
-
-            rankCounts[card.rank]++;
-
-            if (!suitRanks.ContainsKey(card.suit))
-                suitRanks[card.suit] = new HashSet<CardRank>();
-
-            suitRanks[card.suit].Add(card.rank);
-        }
-
-        if (handId.StartsWith("HIGH_"))
-            return GetRankCount(rankCounts, GetRank(handId.Substring(5))) >= 1;
-
-        if (handId.StartsWith("PAIR_"))
-            return GetRankCount(rankCounts, GetRank(handId.Substring(5))) >= 2;
-
-        if (handId.StartsWith("TRIPS_"))
-            return GetRankCount(rankCounts, GetRank(handId.Substring(6))) >= 3;
-
-        if (handId.StartsWith("QUADS_"))
-            return GetRankCount(rankCounts, GetRank(handId.Substring(6))) >= 4;
-
-        if (handId.StartsWith("TWOPAIR_"))
-        {
-            string[] parts = handId.Split('_');
-            return parts.Length == 3 &&
-                GetRankCount(rankCounts, GetRank(parts[1])) >= 2 &&
-                GetRankCount(rankCounts, GetRank(parts[2])) >= 2;
-        }
-
-        if (handId.StartsWith("FULL_"))
-        {
-            string[] parts = handId.Split('_');
-            return parts.Length == 3 &&
-                GetRankCount(rankCounts, GetRank(parts[1])) >= 3 &&
-                GetRankCount(rankCounts, GetRank(parts[2])) >= 2;
-        }
-
-        if (handId == "STRAIGHT_SMALL")
-            return HasRanks(rankCounts, CardRank.Nine, CardRank.Ten,
-                CardRank.Jack, CardRank.Queen, CardRank.King);
-
-        if (handId == "STRAIGHT_BIG")
-            return HasRanks(rankCounts, CardRank.Ten, CardRank.Jack,
-                CardRank.Queen, CardRank.King, CardRank.Ace);
-
-        if (handId.StartsWith("FLUSH_"))
-            return HasFlush(suitRanks, GetSuit(handId.Substring(6)));
-
-        if (handId.StartsWith("POKER_SMALL_"))
-            return HasStraightFlush(suitRanks,
-                GetSuit(handId.Substring(12)), CardRank.Nine,
-                CardRank.Ten, CardRank.Jack, CardRank.Queen,
-                CardRank.King);
-
-        if (handId.StartsWith("POKER_BIG_"))
-            return HasStraightFlush(suitRanks,
-                GetSuit(handId.Substring(10)), CardRank.Ten,
-                CardRank.Jack, CardRank.Queen, CardRank.King,
-                CardRank.Ace);
-
-        return false;
+        MultiplayerHandRules.MatchingCards(handId,cards==null?null:new List<CardSpriteEntry>(cards),out bool complete);
+        return complete;
     }
 
     private bool IsCardRelevantToHand(
@@ -2084,6 +1998,7 @@ public class HotSeatSetupUI : MonoBehaviour
 
     private string FindHandId(string displayName)
     {
+        if(HandRankCatalog.GetAllIds().Contains(displayName)) return displayName;
         string normalizedDisplay = NormalizeHandText(displayName);
 
         foreach (string handId in HandRankCatalog.GetAllIds())
@@ -2104,6 +2019,7 @@ public class HotSeatSetupUI : MonoBehaviour
             return string.Empty;
 
         System.Text.StringBuilder result = new System.Text.StringBuilder();
+        value=System.Text.RegularExpressions.Regex.Replace(value,"<[^>]*>",string.Empty);
         foreach (char character in value.Trim().ToUpperInvariant())
         {
             if (!char.IsWhiteSpace(character) &&

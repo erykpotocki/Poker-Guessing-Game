@@ -42,19 +42,15 @@ public class TurnDebugUI : MonoBehaviour
     {
         if (turnTimerText == null || turnText == null || toolbarStatus == null) return;
         float width = toolbarStatus.rect.width;
-        float timerWidth = Mathf.Min(230f, width * 0.32f);
-        float timerLeft = Mathf.Min(90f, width * 0.08f);
+        float timerWidth = Mathf.Min(230f, width * 0.28f);
+        float timerLeft = Mathf.Max(0,width-timerWidth-12);
         ConfigureStatusLabel(turnTimerText, timerLeft, 6f, timerWidth);
         if (turnText.transform.parent != toolbarStatus) turnText.transform.SetParent(toolbarStatus, false);
-        Transform root = toolbarStatus.GetComponentInParent<Canvas>().rootCanvas.transform;
-        RectTransform table = root.Find("Table") as RectTransform;
-        const float statusWidth = 520f;
-        float centerX = width * 0.5f;
-        if (table != null)
-            centerX = toolbarStatus.InverseTransformPoint(table.TransformPoint(table.rect.center)).x;
-        centerX = Mathf.Clamp(centerX, timerLeft + timerWidth + statusWidth * 0.5f + 24f,
-            Mathf.Max(timerLeft + timerWidth + statusWidth * 0.5f + 24f, width - statusWidth * 0.5f));
-        ConfigureStatusLabel(turnText, centerX - statusWidth * 0.5f, 6f, statusWidth);
+        float statusWidth=Mathf.Max(1,timerLeft-24);
+        Transform table=toolbarStatus.GetComponentInParent<Canvas>().rootCanvas.transform.Find("TablePresentation/Table");
+        float center=table!=null?toolbarStatus.InverseTransformPoint(table.TransformPoint(((RectTransform)table).rect.center)).x:statusWidth*.5f;
+        float half=Mathf.Max(1,Mathf.Min(260,Mathf.Min(center,statusWidth-center)));
+        ConfigureStatusLabel(turnText, center-half, 6f, half*2);
         turnText.alignment = TextAlignmentOptions.Center;
     }
 
@@ -82,6 +78,7 @@ public class TurnDebugUI : MonoBehaviour
 
     private void OnDisable()
     {
+        CasinoAudio.SetUrgency(false);
         if (turnManager != null)
             turnManager.OnActivePlayerChanged -= HandleActivePlayerChanged;
     }
@@ -212,6 +209,7 @@ public class TurnDebugUI : MonoBehaviour
         }
 
         float currentTimeLeft = turnManager.CurrentTurnTimeLeft;
+        CasinoAudio.SetUrgency(currentTimeLeft<=0 && !turnManager.IsResolutionLocked && PhotonNetwork.LocalPlayer!=null && turnManager.CurrentPlayerActorNumber==PhotonNetwork.LocalPlayer.ActorNumber);
 
         int displaySeconds = currentTimeLeft > 0f
             ? Mathf.CeilToInt(currentTimeLeft)

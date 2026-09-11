@@ -10,6 +10,7 @@ public sealed class AuthorWatermark : MonoBehaviour
     {
         if(canvas==null)return;
         Transform existing=canvas.rootCanvas.transform.Find("AuthorWatermark");
+        if(existing==null)existing=canvas.rootCanvas.transform.Find("HandRankPanel/AuthorWatermark");
         if(existing!=null)
         {
             AuthorWatermark existingMark=existing.GetComponent<AuthorWatermark>();
@@ -37,7 +38,8 @@ public sealed class AuthorWatermark : MonoBehaviour
             if(parentCanvas!=null)owner=parentCanvas.rootCanvas;
         }
         if(owner==null||label==null||Screen.width<=0||Screen.height<=0)return;RectTransform root=owner.transform as RectTransform,rect=label.rectTransform;
-        if(rect.parent!=root)rect.SetParent(root,false);
+        Transform targetParent=root;
+        if(rect.parent!=targetParent)rect.SetParent(targetParent,false);
         label.text="© Eryk Potocki";
         label.fontSize=16;
         label.enableAutoSizing=false;
@@ -49,6 +51,20 @@ public sealed class AuthorWatermark : MonoBehaviour
         rect.localRotation=Quaternion.identity;
         rect.anchorMin=rect.anchorMax=new Vector2(.5f,0);rect.pivot=new Vector2(.5f,0);
         rect.offsetMin=rect.offsetMax=Vector2.zero;
-        rect.anchoredPosition=new Vector2(0,4);rect.sizeDelta=new Vector2(320,22);
+        rect.anchoredPosition=new Vector2(0,1);rect.sizeDelta=new Vector2(320,22);
+        if(gameObject.scene.name=="Game")
+        {
+            float bottom=Screen.safeArea.yMin*root.rect.height/Screen.height;
+            Transform table=root.Find("TablePresentation/Table");
+            if(table!=null)
+            {
+                rect.anchorMin=rect.anchorMax=new Vector2(.5f,0);rect.pivot=new Vector2(.5f,0);
+                float centerX=root.InverseTransformPoint(table.TransformPoint(((RectTransform)table).rect.center)).x;
+                rect.anchoredPosition=new Vector2(centerX,1);
+                rect.sizeDelta=new Vector2(320,22);
+                label.alignment=TextAlignmentOptions.Bottom;
+            }
+        }
     }
 }
+

@@ -28,6 +28,7 @@ public class DealtCardView : MonoBehaviour
         }
 
         cardImage.sprite = frontSprite;
+        transform.localRotation=Quaternion.identity;
         cardImage.color = Color.white;
         cardImage.preserveAspect = true;
         cardImage.enabled = true;

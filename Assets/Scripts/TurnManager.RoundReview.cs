@@ -65,6 +65,11 @@ public partial class TurnManager
             bool everyoneReady = true;
             foreach (int actor in participants)
             {
+                if(!activePlayerOrder.Contains(actor))
+                {
+                    if(seatViewsByActorNumber.TryGetValue(actor,out SeatUIView eliminatedSeat)&&eliminatedSeat!=null)eliminatedSeat.SetReadyIndicator(false);
+                    continue;
+                }
                 bool ready;
                 if (LobbyBotRegistry.IsBot(actor)) ready = botsReady;
                 else if (!PhotonNetwork.CurrentRoom.Players.TryGetValue(actor, out Player player))
@@ -76,7 +81,7 @@ public partial class TurnManager
                 if (seatViewsByActorNumber.TryGetValue(actor, out SeatUIView seat) && seat != null)
                     seat.SetReadyIndicator(ready);
             }
-            bool participating = PhotonNetwork.LocalPlayer != null && participants.Contains(PhotonNetwork.LocalPlayer.ActorNumber);
+            bool participating = PhotonNetwork.LocalPlayer != null && activePlayerOrder.Contains(PhotonNetwork.LocalPlayer.ActorNumber);
             roundReview.SetReviewVisible(participating,
                 localReadyRequested || PlayerHasToken(PhotonNetwork.LocalPlayer, ReadyKey, token));
             int master = PhotonNetwork.CurrentRoom.MasterClientId;

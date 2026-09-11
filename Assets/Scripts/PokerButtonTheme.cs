@@ -155,6 +155,9 @@ public sealed class PokerButtonTheme : MonoBehaviour
             return;
 
         label.color = button.interactable ? LabelColor : DisabledLabelColor;
+        // This panel owns its responsive typography. Periodic theme refresh must
+        // not replace its font limits after it becomes visible.
+        if(button.GetComponentInParent<HotSeatHandRankPanelUI>(true)!=null)return;
         if (primary) label.color = button.interactable ? new Color(0.20f, 0.055f, 0.025f) : new Color(0.29f, 0.23f, 0.16f);
         bool usesCompactMainMenuFont =
             button.gameObject.scene.name == "MainMenu" &&
@@ -397,8 +400,10 @@ public sealed class PokerButtonTheme : MonoBehaviour
 
     private static bool IsExcludedFromTheme(Button button)
     {
+        if(button.GetComponentInParent<PortraitMenuTopBar>()!=null)return true;
         string name = button.name.ToLowerInvariant();
-        if (name.StartsWith("utility")) return true;
+        if(name=="category" || name=="avatartile" || name=="frametile")return true;
+        if (name.StartsWith("utility") || name == "spinrewardoverlay" || name=="logo") return true;
 
         if (name.Contains("removeplayer") ||
             name.Contains("delete") ||

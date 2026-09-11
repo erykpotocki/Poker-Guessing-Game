@@ -197,6 +197,14 @@ public sealed class GameUtilityBar : MonoBehaviour
         TMP_Text closeText = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI)).GetComponent<TMP_Text>();
         closeText.transform.SetParent(close.transform, false);
         StyleLabel(closeText, "ZAMKNIJ", 28f);
+        ProfileTestTools.AddSettingsButton(overlay,canvas);
+        if(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name=="Game")
+        {
+            box.sizeDelta=new Vector2(620,860);
+            AddSlider(box,"Wielkość przycisków",-650f,PlayerPrefs.GetFloat("ui.handButtonScale",1f),v=>PlayerPrefs.SetFloat("ui.handButtonScale",v),.8f,1.6f);
+        }
+        Rect bounds=((RectTransform)root).rect;
+        box.localScale=Vector3.one*Mathf.Min(1,Mathf.Min(bounds.width/(box.sizeDelta.x+40),bounds.height/(box.sizeDelta.y+40)));
     }
     private static Button SettingsAction(RectTransform box, string name, string caption, float x, float y, UnityEngine.Events.UnityAction action)
     {
@@ -210,7 +218,7 @@ public sealed class GameUtilityBar : MonoBehaviour
         StyleLabel(label, caption, 25f);
         return button;
     }
-    private static void AddSlider(RectTransform box, string caption, float y, float value, UnityEngine.Events.UnityAction<float> onChange)
+    private static void AddSlider(RectTransform box, string caption, float y, float value, UnityEngine.Events.UnityAction<float> onChange,float minimum=0,float maximum=1)
     {
         TMP_Text label = Label(box, caption + "  " + Mathf.RoundToInt(value * 100f) + "%", y);
         Slider slider = new GameObject("Volume", typeof(RectTransform), typeof(Image), typeof(Slider)).GetComponent<Slider>();
@@ -226,7 +234,7 @@ public sealed class GameUtilityBar : MonoBehaviour
         handle.color = new Color(0.9f, 0.7f, 0.32f);
         slider.handleRect = handle.rectTransform;
         slider.targetGraphic = handle;
-        slider.SetValueWithoutNotify(value);
+        slider.minValue=minimum;slider.maxValue=maximum;slider.SetValueWithoutNotify(value);
         slider.onValueChanged.AddListener(v => { onChange(v); label.text = caption + "  " + Mathf.RoundToInt(v * 100f) + "%"; });
     }
 }

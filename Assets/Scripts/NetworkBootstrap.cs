@@ -15,6 +15,7 @@ public class NetworkBootstrap : MonoBehaviourPunCallbacks
     private bool rejoinAfterMasterConnection;
     private bool recoveryRunning;
     private bool joinedRoomThisSession;
+    public static bool PreserveRoomOnLeave;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void EnsureBootstrapExists()
@@ -85,7 +86,9 @@ public class NetworkBootstrap : MonoBehaviourPunCallbacks
         shouldRecoverRoom = false;
         rejoinAfterMasterConnection = false;
         recoveryRunning = false;
-        PlayerPrefs.SetInt(ResumePendingPrefsKey, 0);
+        PreserveRoomOnLeave=false;
+        PlayerPrefs.SetString(LastRoomCodePrefsKey,PhotonNetwork.CurrentRoom.Name);
+        PlayerPrefs.SetInt(ResumePendingPrefsKey, 1);
         PlayerPrefs.Save();
     }
 
@@ -107,6 +110,7 @@ public class NetworkBootstrap : MonoBehaviourPunCallbacks
         StopAllCoroutines();
         joinedRoomThisSession = false;
         shouldRecoverRoom = rejoinAfterMasterConnection = recoveryRunning = false;
+        if(PreserveRoomOnLeave)return;
         PlayerPrefs.SetInt(ResumePendingPrefsKey, 0);
         PlayerPrefs.DeleteKey(LastRoomCodePrefsKey);
         PlayerPrefs.Save();

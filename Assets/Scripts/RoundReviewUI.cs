@@ -5,6 +5,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+[DefaultExecutionOrder(200)]
 public sealed class RoundReviewUI : MonoBehaviour
 {
     [Serializable] public class Entry
@@ -30,6 +31,7 @@ public sealed class RoundReviewUI : MonoBehaviour
     private GameObject overlay;
     private TurnManager manager;
     private bool dealerAttached;
+    private RectTransform checkAction;
 
     public Entry Latest => history.rounds.Count == 0 ? null : history.rounds[history.rounds.Count - 1];
 
@@ -40,6 +42,7 @@ public sealed class RoundReviewUI : MonoBehaviour
         Canvas canvas = handPanel != null ? handPanel.GetComponentInParent<Canvas>() : FindFirstObjectByType<Canvas>();
         if (canvas == null) return;
         canvasRect = canvas.rootCanvas.transform as RectTransform;
+        checkAction=handPanel!=null?handPanel.transform.Find("CheckButton") as RectTransform:null;
         readyButton = MakeButton("RoundReady", canvasRect, "GOTOWY", manager.MarkRoundReady);
         RectTransform ready = readyButton.transform as RectTransform;
         ready.anchorMin = ready.anchorMax = new Vector2(1f, 0f);
@@ -56,9 +59,6 @@ public sealed class RoundReviewUI : MonoBehaviour
 
     private void Update()
     {
-        if (readyButton != null && canvasRect != null && Screen.height > 0)
-            (readyButton.transform as RectTransform).anchoredPosition = new Vector2(-14f,
-                Screen.safeArea.yMin * canvasRect.rect.height / Screen.height + 26f);
         if (dealerAttached || historyButton == null) return;
         foreach (SeatUIView seat in FindObjectsByType<SeatUIView>(FindObjectsSortMode.None))
         {
@@ -80,6 +80,19 @@ public sealed class RoundReviewUI : MonoBehaviour
             History loaded = JsonUtility.FromJson<History>(json);
             if (loaded != null && loaded.rounds != null) history = loaded;
         }
+    }
+
+    private void LateUpdate()
+    {
+        if(readyButton==null||checkAction==null)return;
+        var ready=(RectTransform)readyButton.transform;
+        ready.pivot=checkAction.pivot;
+        ready.position=checkAction.position;
+        ready.rotation=checkAction.rotation;
+        ready.sizeDelta=new Vector2(checkAction.rect.width*Mathf.Abs(checkAction.lossyScale.x/ready.lossyScale.x),checkAction.rect.height*Mathf.Abs(checkAction.lossyScale.y/ready.lossyScale.y));
+        var caption=readyButton.GetComponentInChildren<TMP_Text>();
+        if(caption!=null){caption.enableAutoSizing=true;caption.fontSizeMin=18;caption.fontSizeMax=32*Mathf.Clamp(PlayerPrefs.GetFloat("ui.handButtonScale",1f),.8f,1.6f);}
+        if(readyButton.gameObject.activeSelf)ready.SetAsLastSibling();
     }
 
     public void Record(int round, string declaration, string id, bool exists, int loser,

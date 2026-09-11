@@ -8,14 +8,15 @@ namespace PokerProfile
         public string Nickname = "Gracz";
         public string SelectedAvatarId = "avatar_0";
         public string SelectedFrameId = "none";
-        public string SelectedCardBackId = "HotSeatBack_Ornate";
+        public string SelectedCardBackId = "2clasic";
+        public string SelectedOfflineCardBackId = "HotSeatBack_Ornate";
     }
     [Serializable] public sealed class Wallet { public long Coins, RewardCurrency; }
     [Serializable] public sealed class Inventory
     {
         public List<string> OwnedAvatars = new List<string> { "avatar_0" };
         public List<string> OwnedFrames = new List<string>();
-        public List<string> OwnedCardBacks = new List<string> { "HotSeatBack_Ornate" };
+        public List<string> OwnedCardBacks = new List<string> { "2clasic" };
     }
     [Serializable] public sealed class Statistics { public int GamesPlayed, GamesWon, RoundsPlayed, AdsWatched, Spins; }
     [Serializable] public sealed class OpponentRecord
@@ -27,11 +28,21 @@ namespace PokerProfile
     }
     [Serializable] public sealed class PendingUnlock
     {
+        public string Source = "";
         public string Category = "";
         public string ItemId = "";
         public string Title = "";
     }
-    [Serializable] public sealed class Progression { public long Experience; public int Level => 1 + (int)(Experience / 100); }
+    [Serializable] public sealed class Progression
+    {
+        public long Experience;
+        public int CurveVersion;
+        public int Level => 1+(int)Math.Floor((Math.Sqrt(9+Math.Max(0,Experience)*.16)-3)/2);
+        public static long Threshold(int level) { long n=Math.Max(0,level-1);return 25*n*(n+3); }
+        public long RequiredExperience => 100L+50L*(Level-1);
+        public long CurrentExperience => Math.Max(0,Experience)-Threshold(Level);
+        public static int LevelGold(int level) => Math.Min(100,5+Math.Max(0,level-2)*3);
+    }
     [Serializable] public sealed class MissionPeriod
     {
         public string Key = "";
@@ -57,6 +68,8 @@ namespace PokerProfile
     [Serializable] public sealed class PlayerSave
     {
         public int Version = 1;
+        public bool RulesRead;
+        public List<string> ClaimedIntroMissions = new List<string>();
         public PlayerProfile Profile = new PlayerProfile();
         public Wallet Wallet = new Wallet();
         public Inventory Inventory = new Inventory();
@@ -98,7 +111,7 @@ namespace PokerProfile
             else if(prize.Category=="diamonds")data.Wallet.RewardCurrency+=prize.Amount;
             else if(prize.Category=="avatar"){Own(data.Inventory.OwnedAvatars,prize.ItemId);data.Wheel.AvatarsWon++;}
             else if(prize.Category=="back"){Own(data.Inventory.OwnedCardBacks,prize.ItemId);data.Wheel.AvatarsWon++;}
-            else if(prize.Category=="frame"){Own(data.Inventory.OwnedFrames,prize.ItemId);data.Wheel.AvatarsWon++;}
+            else if(prize.Category=="frame"){data.Wheel.PendingPrize=null;return false;}
             else return false;
             data.Wheel.PendingPrize=null;return true;
         }
@@ -126,15 +139,26 @@ namespace PokerProfile
             if (string.IsNullOrWhiteSpace(id) || data.Receipts.Contains(id)) return false;
             data.Receipts.Add(id); return true;
         }
-        public static bool CompleteMatch(PlayerSave data,string matchId,bool won,DateTime utc,int coins=20,int xp=25,bool diamond=false)
+        public static bool CompleteMatch(PlayerSave data,string matchId,bool won,DateTime utc,int coins=20,int xp=25,bool diamond=false,bool advanced=false)
         {
             if ((matchId??"").StartsWith("hotseat:",StringComparison.OrdinalIgnoreCase)) return false;
             RefreshPeriods(data,utc);
             if (!Receipt(data,"match:"+matchId)) return false;
             data.Statistics.GamesPlayed++;
             if (won) data.Statistics.GamesWon++;
-            data.Wallet.Coins += Math.Max(0,Math.Min(200,coins));
+            data.Wallet.Coins += Math.Max(0,Math.Min(won&&advanced?230:200,coins));
+            int previousLevel=data.Progression.Level;
             data.Progression.Experience += Math.Max(0,Math.Min(100,xp));
+            for(int level=previousLevel+1;level<=data.Progression.Level;level++)
+            {
+                data.Wallet.Coins+=Progression.LevelGold(level);
+                data.Wallet.RewardCurrency+=level;
+                data.PendingUnlocks.Add(new PendingUnlock {Source="level",Category="level",ItemId=data.Profile.SelectedAvatarId,
+                    Title=data.Profile.Nickname+"\nGratulacje! Poziom "+level+"\n"+Progression.LevelGold(level)+" złota + "+level+" diamentów"});
+            }
+            foreach(int level in LevelFrameCatalog.Levels)
+                if(data.Progression.Level>=level&&!data.Inventory.OwnedFrames.Contains("level:"+level))
+                    Unlock(data,"frame","level:"+level,"Ramka za poziom "+level,"level");
             if (diamond) data.Wallet.RewardCurrency++;
             Evaluate(data);
             return true;
@@ -147,7 +171,7 @@ namespace PokerProfile
         }
         public static void Evaluate(PlayerSave d)
         {
-            Award(d,"first_game",d.Statistics.GamesPlayed,1,()=>Unlock(d,"frame","classic_wood","ODBLOKOWANO NOWĄ RAMKĘ"));
+            // The first-game frame is claimed explicitly in Missions.
             Award(d,"games_10",d.Statistics.GamesPlayed,10,()=>Own(d.Inventory.OwnedAvatars,"avatar_1"));
             Award(d,"games_50",d.Statistics.GamesPlayed,50,()=>Own(d.Inventory.OwnedAvatars,"avatar_2"));
             Award(d,"games_100",d.Statistics.GamesPlayed,100,()=>Own(d.Inventory.OwnedCardBacks,"HotSeatBack_RedDiamond"));
@@ -156,7 +180,7 @@ namespace PokerProfile
             Award(d,"spins_10",d.Statistics.Spins,10,()=>d.Wallet.Coins += 100);
         }
         public static void Own(List<string> inventory,string id) { if (!inventory.Contains(id)) inventory.Add(id); }
-        public static void Unlock(PlayerSave data,string category,string id,string title)
+        public static void Unlock(PlayerSave data,string category,string id,string title,string source="")
         {
             List<string> inventory = category == "avatar" ? data.Inventory.OwnedAvatars :
                 category == "back" ? data.Inventory.OwnedCardBacks : data.Inventory.OwnedFrames;
@@ -164,7 +188,7 @@ namespace PokerProfile
             Own(inventory,id);
             if (wasOwned) return;
             data.PendingUnlocks ??= new List<PendingUnlock>();
-            data.PendingUnlocks.Add(new PendingUnlock { Category=category,ItemId=id,Title=title });
+            data.PendingUnlocks.Add(new PendingUnlock { Category=category,ItemId=id,Title=title,Source=source });
         }
         private static void Award(PlayerSave d,string id,int progress,int target,Action grant)
         {
@@ -207,3 +231,5 @@ namespace PokerProfile
         }
     }
 }
+
+

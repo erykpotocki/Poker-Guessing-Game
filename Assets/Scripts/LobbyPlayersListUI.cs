@@ -140,11 +140,12 @@ public class LobbyPlayersListUI : MonoBehaviourPunCallbacks
         {
             LobbyBotInfo bot = bots[i];
             SpawnRow(bot.ActorNumber, iRow,
-                bot.Name + "\n<size=65%><color=#B8AA8A>Początkujący</color></size>",
+                bot.Name + "\n<size=65%><color=#B8AA8A>"+(bot.Advanced?"Zaawansowany":"Początkujący")+"</color></size>",
                 bot.AvatarIndex);
 
             iRow++;
         }
+        LayoutRebuilder.ForceRebuildLayoutImmediate(container as RectTransform);
     }
 
     private void SpawnRow(int actorNumber, int rowNumber, string displayName, int avatarIndex)
@@ -152,6 +153,14 @@ public class LobbyPlayersListUI : MonoBehaviourPunCallbacks
         GameObject go = Instantiate(rowPrefab, container);
         spawned.Add(go);
         rowsByActorNumber[actorNumber] = go;
+        if(LobbyBotRegistry.IsBot(actorNumber)&&PhotonNetwork.IsMasterClient)
+        {
+            go.name="UtilityBotRow";
+            var hit=go.GetComponent<Image>();if(hit==null)hit=go.AddComponent<Image>();hit.color=Color.clear;
+            var choose=go.GetComponent<Button>();if(choose==null)choose=go.AddComponent<Button>();
+            choose.targetGraphic=hit;choose.transition=Selectable.Transition.None;
+            choose.onClick.AddListener(()=>{LobbyBotRegistry.ToggleDifficulty(actorNumber);Refresh();});
+        }
 
         TMP_Text nameText = go.transform.Find("NameText")?.GetComponent<TMP_Text>();
         Image avatarImg = go.transform.Find("AvatarImage")?.GetComponent<Image>();
@@ -347,7 +356,7 @@ public class LobbyPlayersListUI : MonoBehaviourPunCallbacks
     private void ClearRows()
     {
         for (int i = 0; i < spawned.Count; i++)
-            if (spawned[i] != null) Destroy(spawned[i]);
+            if (spawned[i] != null){spawned[i].SetActive(false);Destroy(spawned[i]);}
         spawned.Clear();
         rowsByActorNumber.Clear();
     }

@@ -312,6 +312,7 @@ public class TableSeatSpawner : MonoBehaviour
 
         GameObject seatGO = Instantiate(seatPrefab, tableCenter.parent);
         seatGO.name = $"Seat_{seatIndex}_{p.ActorNumber}_{p.NickName}";
+        GetComponent<MultiplayerTableLayout>()?.AttachSeat(seatGO.GetComponent<RectTransform>(),angleDeg);
 
         RectTransform seatRT = seatGO.GetComponent<RectTransform>();
         seatRT.anchoredPosition = tableCenter.anchoredPosition + pos;
@@ -378,6 +379,7 @@ public class TableSeatSpawner : MonoBehaviour
 
         GameObject seatGO = Instantiate(seatPrefab, tableCenter.parent);
         seatGO.name = $"Seat_{seatIndex}_{bot.ActorNumber}_{bot.Name}";
+        GetComponent<MultiplayerTableLayout>()?.AttachSeat(seatGO.GetComponent<RectTransform>(),angleDeg);
 
         RectTransform seatRT = seatGO.GetComponent<RectTransform>();
         seatRT.anchoredPosition = tableCenter.anchoredPosition + pos;
@@ -404,8 +406,9 @@ public class TableSeatSpawner : MonoBehaviour
     // far-left place. Move it by position only, never by nickname.
     private Vector2 MoveLeftEdgeSeatOutward(Vector2 position)
     {
+        // Do not push the edge player outside the usable canvas on narrow phones.
         if (position.x < -radiusX * 0.55f)
-            position.x -= 150f;
+            position.x += 60f;
         return position;
     }
 
@@ -420,6 +423,7 @@ public class TableSeatSpawner : MonoBehaviour
 
         GameObject dealerGO = Instantiate(seatPrefab, tableCenter.parent);
         dealerGO.name = "Seat_Dealer";
+        GetComponent<MultiplayerTableLayout>()?.AttachSeat(dealerGO.GetComponent<RectTransform>(),angleDeg);
 
         RectTransform dealerRT = dealerGO.GetComponent<RectTransform>();
         dealerRT.anchoredPosition = tableCenter.anchoredPosition + pos;

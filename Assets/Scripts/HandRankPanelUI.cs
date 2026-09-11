@@ -21,6 +21,111 @@ public class HandRankPanelUI : MonoBehaviour
     [SerializeField] private Color raiseButtonColor = new Color32(255, 209, 51, 255);
 
     private static readonly string[] rankOrder = { "9", "10", "J", "Q", "K", "A" };
+    private int searchRound=-1;
+    private void Update()
+    {
+        if(turnManager==null)return;
+        if(searchRound==turnManager.CurrentRoundNumber)return;
+        searchRound=turnManager.CurrentRoundNumber;
+        if(handSearch!=null&&!string.IsNullOrEmpty(handSearch.text)){handSearch.SetTextWithoutNotify("");ClearSelectedRank();SetOnlyOneListActive(categoryList);}
+    }
+    private TMP_InputField handSearch;
+    private void InstallSearch()
+    {
+        var r=new GameObject("UtilityHandSearch",typeof(RectTransform),typeof(Image),typeof(TMP_InputField)).GetComponent<RectTransform>();
+        r.SetParent(transform,false);r.anchorMin=new Vector2(0,1);r.anchorMax=Vector2.one;r.pivot=new Vector2(.5f,1);
+        r.offsetMin=new Vector2(14,-156);r.offsetMax=new Vector2(-68,-100);
+        r.GetComponent<Image>().color=new Color(.05f,.10f,.08f);
+        handSearch=r.GetComponent<TMP_InputField>();handSearch.characterLimit=100;
+        var text=new GameObject("Text",typeof(RectTransform),typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>();
+        text.transform.SetParent(r,false);text.rectTransform.anchorMin=Vector2.zero;text.rectTransform.anchorMax=Vector2.one;
+        text.rectTransform.offsetMin=new Vector2(8,2);text.rectTransform.offsetMax=new Vector2(-8,-2);text.fontSize=26;text.color=Color.white;
+        handSearch.textViewport=r;handSearch.textComponent=text;handSearch.customCaretColor=true;handSearch.caretColor=Color.white;
+        handSearch.onValueChanged.AddListener(SearchHands);r.gameObject.SetActive(false);
+        var icon=new GameObject("UtilitySearchToggle",typeof(RectTransform),typeof(Image),typeof(Button)).GetComponent<Button>();
+        icon.transform.SetParent(transform,false);var ir=(RectTransform)icon.transform;ir.anchorMin=ir.anchorMax=Vector2.one;ir.pivot=Vector2.one;ir.sizeDelta=new Vector2(54,56);ir.anchoredPosition=new Vector2(-10,-100);
+        icon.GetComponent<Image>().color=Color.clear;
+        // Draw a magnifier with UI geometry, independent of font glyph coverage.
+        for(int i=0;i<16;i++){float a=i*Mathf.PI*2/16;SearchStroke(ir,new Vector2(Mathf.Cos(a)*11-4,Mathf.Sin(a)*11+4),new Vector2(5,3),a*Mathf.Rad2Deg+90);}
+        SearchStroke(ir,new Vector2(10,-10),new Vector2(17,4),-45);
+        icon.onClick.AddListener(()=>{bool open=!r.gameObject.activeSelf;r.gameObject.SetActive(open);if(open)handSearch.ActivateInputField();else{handSearch.SetTextWithoutNotify("");ClearSelectedRank();SetOnlyOneListActive(categoryList);}});
+    }
+    private static void SearchStroke(Transform parent,Vector2 position,Vector2 size,float angle)
+    {
+        var image=new GameObject("Stroke",typeof(RectTransform),typeof(Image)).GetComponent<Image>();image.transform.SetParent(parent,false);
+        image.rectTransform.sizeDelta=size;image.rectTransform.anchoredPosition=position;image.rectTransform.localRotation=Quaternion.Euler(0,0,angle);image.color=new Color(1,.88f,.6f);image.raycastTarget=false;
+    }
+    private void SearchHands(string query)
+    {
+        if(string.IsNullOrWhiteSpace(query)){SetOnlyOneListActive(categoryList);return;}
+        var candidates=new List<string>();
+        foreach(string rank in rankOrder)for(int n=1;n<=4;n++)candidates.Add(string.Join(" ",System.Linq.Enumerable.Repeat(rank,n)));
+        for(int i=0;i<rankOrder.Length;i++)for(int j=0;j<rankOrder.Length;j++)if(i!=j)
+        {
+            if(i<j)candidates.Add($"{rankOrder[i]} {rankOrder[i]} {rankOrder[j]} {rankOrder[j]}");
+            candidates.Add($"{rankOrder[i]} {rankOrder[i]} {rankOrder[i]} {rankOrder[j]} {rankOrder[j]}");
+        }
+        candidates.Add("9 10 J Q K");candidates.Add("10 J Q K A");
+        foreach(string suit in new[]{"♦","♥","♣","♠"}){candidates.Add("Kolor "+suit);candidates.Add("Mały poker "+suit);candidates.Add("Duży poker "+suit);}
+        candidates.RemoveAll(candidate=>!MatchesSearch(candidate,query));
+        ClearSelectedRank();SetTitle(candidates.Count==0?"Brak układów":"Wyniki wyszukiwania");SetOnlyOneListActive(rankOptionList);
+        var buttons=GetOptionButtons(rankOptionList.transform);
+        if(buttons.Count>0)while(buttons.Count<candidates.Count){var clone=Instantiate(buttons[0],rankOptionList.transform);clone.name="SearchOption";buttons.Add(clone);}
+        FillOptionList(rankOptionList,candidates.ToArray());
+    }
+
+    private static readonly Dictionary<string,string> SearchAliases=BuildSearchAliases();
+    private static Dictionary<string,string> BuildSearchAliases()
+    {
+        var aliases=new Dictionary<string,string>();
+        string[] groups={
+            "Q|dama|damy|dam|damka|damki|krolowa|krolowe|queen|queens|lady",
+            "J|walet|walety|waleta|waletow|jopek|jopki|jopka|jupek|jupki|jupka|dupek|dupki|dupka|jack|jacks|knave|knaves|junek|junkier",
+            "K|krol|krole|krola|kroli|krolow|king|kings",
+            "A|as|asy|asa|asow|ace|aces",
+            "9|dziewiatka|dziewiatki|dziewiatek|nine|nines",
+            "10|dziesiatka|dziesiatki|dziesiatek|ten|tens",
+            "♥|kier|kiery|kiera|kierowy|kierowa|serce|serca|serduszko|serduszka|czerwo|czerwien|heart|hearts",
+            "♦|karo|karowy|karowa|dzwonek|dzwonki|dzwon|dzwony|diament|diamenty|diamond|diamonds|romb|romby",
+            "♠|pik|piki|pika|pikowy|pikowa|wino|wina|lisc|liscie|spade|spades",
+            "♣|trefl|trefle|trefla|treflowy|treflowa|zoladz|zoledzie|zoladzie|zoledz|krzyz|krzyze|koniczyna|koniczynka|club|clubs|acorn|acorns",
+            "KOLOR|flush", "MALY|small", "DUZY|big"
+        };
+        foreach(string group in groups)
+        {
+            string[] words=group.Split('|');
+            foreach(string word in words)aliases[FoldSearch(word)]=words[0];
+        }
+        return aliases;
+    }
+    private static string FoldSearch(string value)
+    {
+        var builder=new System.Text.StringBuilder();
+        foreach(char c in (value??"").Normalize(System.Text.NormalizationForm.FormD))
+            if(System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c)!=System.Globalization.UnicodeCategory.NonSpacingMark)
+                builder.Append(c=='ł'||c=='Ł'?'L':char.ToUpperInvariant(c));
+        return builder.ToString();
+    }
+    public static bool MatchesSearch(string candidate,string query)
+    {
+        string normalized=System.Text.RegularExpressions.Regex.Replace(FoldSearch(query),@"[\p{L}\p{N}]+",
+            match=>SearchAliases.TryGetValue(match.Value,out string alias)?alias:match.Value);
+        string availableText=FoldSearch(candidate);
+        var wanted=new Dictionary<string,int>();
+        foreach(string word in normalized.Split(new[]{' ', ',', ';', '+', '\t'},StringSplitOptions.RemoveEmptyEntries))
+        {
+            if(System.Text.RegularExpressions.Regex.IsMatch(word,"^(10|[9JQKA])+$"))
+            {
+                foreach(System.Text.RegularExpressions.Match token in System.Text.RegularExpressions.Regex.Matches(word,"10|[9JQKA]"))
+                {wanted.TryGetValue(token.Value,out int count);wanted[token.Value]=count+1;}
+            }
+            else if(!availableText.Contains(word))return false;
+        }
+        var available=new Dictionary<string,int>();
+        foreach(string word in availableText.Split(' ')){available.TryGetValue(word,out int count);available[word]=count+1;}
+        foreach(var token in wanted)if(!available.TryGetValue(token.Key,out int count)||count<token.Value)return false;
+        return true;
+    }
 
     private GameObject categoryList;
     private GameObject rankOptionList;
@@ -117,6 +222,7 @@ public class HandRankPanelUI : MonoBehaviour
             PokerButtonTheme.ApplyTo(checkButton);
         }
         if (GetComponent<MultiplayerPanelLayout>() == null) gameObject.AddComponent<MultiplayerPanelLayout>();
+        InstallSearch();
     }
 
     private void ResolveReferences()
@@ -996,6 +1102,11 @@ public class HandRankPanelUI : MonoBehaviour
         if (rankOptionList != null) rankOptionList.SetActive(target == rankOptionList);
         if (fullGroupList != null) fullGroupList.SetActive(target == fullGroupList);
         if (fullDetailList != null) fullDetailList.SetActive(target == fullDetailList);
+        if(target!=null)
+        {
+            var scroll=target.GetComponentInParent<ScrollRect>();
+            if(scroll!=null){scroll.StopMovement();((RectTransform)target.transform).anchoredPosition=Vector2.zero;}
+        }
     }
 
     private void SetTitle(string value)
@@ -1037,3 +1148,4 @@ public class HandRankPanelUI : MonoBehaviour
         return null;
     }
 }
+

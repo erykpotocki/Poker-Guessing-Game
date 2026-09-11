@@ -35,6 +35,7 @@ public static class AvatarCircleUtility
         rect.offsetMin = rect.offsetMax = Vector2.zero;
         Image content = child.GetComponent<Image>();
         content.sprite = avatar; content.color = tint; content.preserveAspect = true;
+        content.gameObject.AddComponent<CircularAvatarMesh>();
         content.raycastTarget = raycast;
         source.raycastTarget = raycast;
         return content;

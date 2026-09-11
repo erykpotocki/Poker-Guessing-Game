@@ -18,9 +18,12 @@ public class GameLoadSync : MonoBehaviourPunCallbacks
     private bool roomReady = false;
     private bool loadingFinished = false;
     private bool loadHandshakeStarted = false;
+    private float loadingStartedAt;
+    private float LoadingDuration => Mathf.Max(5f,minimumLoadingTime)+7f;
 
     private void Start()
     {
+        loadingStartedAt=Time.unscaledTime;
         // OnJoinedRoom may run between OnEnable and Start. Do not reset a
         // handshake already begun by that callback.
         loadingUI = MultiplayerLoadingTransition.UseForGame(loadingUI);
@@ -39,7 +42,8 @@ public class GameLoadSync : MonoBehaviourPunCallbacks
         foreach (Player player in players)
             if (player.CustomProperties.TryGetValue(PlayerLoadedKey, out object value) && value is bool ready && ready) loaded++;
         float fraction = players.Length > 0 ? (float)loaded / players.Length : 0f;
-        loadingUI.SetProgress(.95f * fraction, fraction < 1f ? "Oczekiwanie na graczy…" : "Przygotowywanie stołu…");
+        float timedProgress=Mathf.Clamp01((Time.unscaledTime-loadingStartedAt)/LoadingDuration);
+        loadingUI.SetProgress(.9f*timedProgress+.09f*fraction, minimumTimePassed && fraction<1f ? "Oczekiwanie na graczy…" : "Przygotowywanie stołu…");
     }
 
     private IEnumerator WaitForRoomAndStartHandshake()
@@ -95,6 +99,9 @@ public class GameLoadSync : MonoBehaviourPunCallbacks
     private IEnumerator FinishLoadHandshakeNextFrame()
     {
         yield return null;
+        // Acknowledge only after our presentation time, so everyone waits
+        // before the first deal instead of playing beneath another loader.
+        while(!minimumTimePassed && PhotonNetwork.InRoom)yield return null;
 
         if (!PhotonNetwork.InRoom)
             yield break;
@@ -111,7 +118,7 @@ public class GameLoadSync : MonoBehaviourPunCallbacks
 
     private IEnumerator MinimumLoadingTimer()
     {
-        yield return new WaitForSecondsRealtime(Mathf.Max(5f, minimumLoadingTime));
+        yield return new WaitForSecondsRealtime(LoadingDuration);
         minimumTimePassed = true;
         TryHideLoading();
     }

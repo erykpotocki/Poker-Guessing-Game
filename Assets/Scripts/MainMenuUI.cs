@@ -13,6 +13,7 @@ public class MainMenuUI : MonoBehaviour
     private Button rulesButton;
     private Button settingsButton;
     private Button shopButton;
+    private Button missionsButton, adventureButton;
     private Button profileButton;
     private Button spinButton;
     private Button backButton;
@@ -44,6 +45,8 @@ public class MainMenuUI : MonoBehaviour
     {
         PokerButtonTheme.EnsureController();
         BuildMenu();
+        if (FindFirstObjectByType<AutoResumeRoom>() == null) gameObject.AddComponent<AutoResumeRoom>();
+        ProfileTestTools.InstallLogo(transform.root);
         if (screenCanvasGroup != null)
             screenCanvasGroup.alpha = 1f;
     }
@@ -164,6 +167,8 @@ public class MainMenuUI : MonoBehaviour
             "SettingsButton", styleSource, new Vector2(175.8f, -320f), new Vector2(151f, 44f), false);
         shopButton = CreateMenuButton(
             "ShopButton", styleSource, new Vector2(95.2f, -250f), new Vector2(312f, 48f), false);
+        missionsButton = CreateMenuButton("MissionsButton",styleSource,new Vector2(14.6f,-385f),new Vector2(151f,44f),false);
+        adventureButton = CreateMenuButton("AdventureButton",styleSource,new Vector2(175.8f,-385f),new Vector2(151f,44f),false);
         backButton = CreateMenuButton(
             "ModeBackButton", styleSource, new Vector2(95.2f, -250f), new Vector2(312f, 48f), false);
 
@@ -367,6 +372,9 @@ public class MainMenuUI : MonoBehaviour
         ConfigureButton(rulesButton, "ZASADY", string.Empty, ShowRules);
         ConfigureButton(settingsButton, "USTAWIENIA", string.Empty, ShowSettings);
         ConfigureButton(shopButton, "SKLEP", string.Empty, ShowShop);
+        ConfigureButton(missionsButton,"MISJE",string.Empty,()=>MissionsUI.Show(GetComponentInParent<Canvas>()));
+        ConfigureButton(adventureButton,"PRZYGODA",string.Empty,()=>ShowInfo("PRZYGODA","WKRÓTCE","Pokonuj kolejnych przeciwników w trybie dla jednego gracza. Ten tryb jest w przygotowaniu."));
+        missionsButton.gameObject.SetActive(true);adventureButton.gameObject.SetActive(true);
         rulesButton.gameObject.SetActive(true);
         settingsButton.gameObject.SetActive(true);
         shopButton.gameObject.SetActive(true);
@@ -385,6 +393,7 @@ public class MainMenuUI : MonoBehaviour
         rulesButton.gameObject.SetActive(false);
         settingsButton.gameObject.SetActive(false);
         shopButton.gameObject.SetActive(false);
+        missionsButton.gameObject.SetActive(false);adventureButton.gameObject.SetActive(false);
         backButton.gameObject.SetActive(true);
         ShowButtonsImmediately(primaryButton, secondaryButton, backButton);
     }
@@ -432,6 +441,7 @@ public class MainMenuUI : MonoBehaviour
     private void ShowRules()
     {
         ShowInfo("ZASADY GRY", "JAK GRAĆ", RulesText);
+        PlayerProfileService.Data.RulesRead=true;PlayerProfileService.Save();
     }
 
     private void ShowSettings()
@@ -527,3 +537,4 @@ public class MainMenuUI : MonoBehaviour
         SceneManager.LoadScene(sceneName);
     }
 }
+
