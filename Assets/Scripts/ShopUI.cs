@@ -15,12 +15,13 @@ public sealed class ShopUI : MonoBehaviour
     public static TMP_Text Text(Transform parent,string caption,float x,float y,float w,float h,float size=28)
     {
         var t=Rect("Label",parent,x,y,w,h).gameObject.AddComponent<TextMeshProUGUI>();t.text=caption;t.fontSize=size;
-        t.color=new Color(1,.9f,.7f);t.alignment=TextAlignmentOptions.Center;t.raycastTarget=false;return t;
+        t.color=new Color(1,.9f,.7f);t.alignment=TextAlignmentOptions.Center;t.raycastTarget=false;
+        t.enableAutoSizing=true;t.fontSizeMax=size;t.fontSizeMin=size*.7f;t.overflowMode=TextOverflowModes.Ellipsis;return t;
     }
     public static Button Button(Transform parent,string caption,float x,float y,float w,float h,Action action)
     {
         var r=Rect("Action",parent,x,y,w,h);var im=r.gameObject.AddComponent<Image>();var b=r.gameObject.AddComponent<Button>();b.targetGraphic=im;
-        Text(r,caption,4,0,w-8,h,25);b.onClick.AddListener(()=>action());PokerButtonTheme.ApplyTo(b);return b;
+        Text(r,caption,4,0,w-8,h,25).name="ResponsiveLabel";b.onClick.AddListener(()=>action());PokerButtonTheme.ApplyTo(b);return b;
     }
     public static void Show(Canvas canvas)
     {
@@ -31,7 +32,7 @@ public sealed class ShopUI : MonoBehaviour
     public static RectTransform Overlay(Canvas canvas,string name)
     {
         var r=Rect(name,canvas.rootCanvas.transform,0,0,0,0);r.anchorMin=Vector2.zero;r.anchorMax=Vector2.one;r.offsetMin=r.offsetMax=Vector2.zero;
-        r.gameObject.AddComponent<Image>().color=new Color(.015f,.025f,.022f,.98f);
+        r.gameObject.AddComponent<Image>().color=new Color(.015f,.025f,.022f,1f);
         var layer=r.gameObject.AddComponent<Canvas>();layer.overrideSorting=true;layer.sortingOrder=650;r.gameObject.AddComponent<GraphicRaycaster>();
         PortraitMenuTopBar.ApplyOverlayInset(r);Canvas.ForceUpdateCanvases();return r;
     }

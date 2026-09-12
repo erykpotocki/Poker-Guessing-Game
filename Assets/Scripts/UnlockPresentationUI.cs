@@ -15,6 +15,7 @@ public sealed class UnlockPresentationUI : MonoBehaviour
         obj.transform.SetParent(owner.rootCanvas.transform,false);RectTransform root=obj.transform as RectTransform;
         root.anchorMin=Vector2.zero;root.anchorMax=Vector2.one;root.offsetMin=root.offsetMax=Vector2.zero;
         obj.GetComponent<Image>().color=new Color(0,0,0,.86f);Canvas c=obj.GetComponent<Canvas>();c.overrideSorting=true;c.sortingOrder=700;
+        var fade=obj.AddComponent<CanvasGroup>();fade.alpha=0;fade.interactable=false;
         obj.GetComponent<UnlockPresentationUI>().Build(owner);
     }
     private RectTransform Rect(string name,Transform parent,Vector2 pos,Vector2 size)
@@ -26,8 +27,9 @@ public sealed class UnlockPresentationUI : MonoBehaviour
         PendingUnlock item=PlayerProfileService.PeekUnlock();if(item==null){Destroy(gameObject);return;}
         RectTransform panel=Rect("GoldenUnlock",transform,Vector2.zero,new Vector2(700,800));panel.gameObject.AddComponent<Image>().color=new Color(.015f,.045f,.040f,1f);
         bool level=item.Category=="level";
-        Text(panel,item.Title,new Vector2(0,level?260:245),new Vector2(620,level?170:70),level?34:28).richText=false;
+        Text(panel,level?item.Title:"Odblokowano nagrodę",new Vector2(0,level?260:245),new Vector2(620,level?170:70),level?34:28).richText=false;
         if(!level)Text(panel,"Gratulacje!",new Vector2(0,320),new Vector2(620,80),60);
+        if(!level)Text(panel,item.Title,new Vector2(0,-165),new Vector2(620,64),26).richText=false;
         Sprite preview=Resolve(item);
         Image image=Rect("UnlockedItem",panel,new Vector2(0,20),new Vector2(280,280)).gameObject.AddComponent<Image>();image.sprite=preview;image.preserveAspect=true;image.raycastTarget=false;
         if(item.Category=="avatar"||level) AvatarCircleUtility.Apply(image);
@@ -44,7 +46,7 @@ public sealed class UnlockPresentationUI : MonoBehaviour
         if(item.Category=="avatar" && item.ItemId.StartsWith("download:")) return Resources.Load<Sprite>("ShopAvatars/"+item.ItemId.Substring(9));
         if(item.Category=="frame")return LevelFrameCatalog.Resolve(item.ItemId);
         if(item.Category=="avatar"){AvatarDatabase db=Resources.Load<AvatarDatabase>("ProfileAvatars");if(db!=null&&int.TryParse(item.ItemId.Replace("avatar_",""),out int i)&&db.avatars!=null&&i>=0&&i<db.avatars.Length)return db.avatars[i];}
-        if(item.Category=="back"){CardBackDatabase db=new GameObject("UnlockBackResolver").AddComponent<CardBackDatabase>();for(int i=0;i<db.BackCount;i++){Sprite s=db.GetBackSprite(i);if(s!=null&&s.texture.name==item.ItemId){Destroy(db.gameObject);return s;}}Destroy(db.gameObject);}
+        if(item.Category=="back")return CardBackDatabase.FindOnline(item.ItemId);
         return null;
     }
     private float animationTime;

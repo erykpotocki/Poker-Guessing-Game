@@ -71,7 +71,7 @@ public sealed class PlayerProfileUI : MonoBehaviour, IPointerDownHandler
         PortraitMenuTopBar.ApplyOverlayInset(rect);
         obj.GetComponent<Image>().color = new Color(.01f,.018f,.012f,1f);
         var group=obj.AddComponent<CanvasGroup>();group.alpha=1;group.ignoreParentGroups=true;
-        Canvas modal = obj.GetComponent<Canvas>(); modal.overrideSorting = true; modal.sortingOrder = 620;
+        Canvas modal = obj.GetComponent<Canvas>(); modal.overrideSorting = true; modal.sortingOrder = 680;
         obj.GetComponent<PlayerProfileUI>().Build();
     }
     private static RectTransform Rect(string name,Transform parent,float x,float y,float width,float height)
@@ -92,7 +92,8 @@ public sealed class PlayerProfileUI : MonoBehaviour, IPointerDownHandler
         RectTransform rect = Rect("ProfileAction",parent,x,y,width,height);
         Image image = rect.gameObject.AddComponent<Image>();
         Button button = rect.gameObject.AddComponent<Button>(); button.targetGraphic = image;
-        TMP_Text text = Text(rect,value,0,0,width,height,30); text.alignment = TextAlignmentOptions.Center;
+        TMP_Text text = Text(rect,value,0,0,width,height,30); text.name="ResponsiveLabel";text.alignment = TextAlignmentOptions.Center;
+        text.enableAutoSizing=true;text.fontSizeMin=20;text.fontSizeMax=30;
         button.interactable = enabled; button.onClick.AddListener(()=>action()); PokerButtonTheme.ApplyTo(button); return button;
     }
     private void Build()
@@ -133,7 +134,7 @@ public sealed class PlayerProfileUI : MonoBehaviour, IPointerDownHandler
         TMP_Text signature=Text(root,"© Eryk Potocki",left+(width-320f)*.5f,root.rect.height-28,320,22,16);
         signature.alignment=TextAlignmentOptions.Bottom;signature.color=new Color(1f,.86f,.62f,.36f);
         signature.rectTransform.anchorMin=signature.rectTransform.anchorMax=new Vector2(.5f,0);
-        signature.rectTransform.pivot=new Vector2(.5f,0);signature.rectTransform.anchoredPosition=new Vector2(0,12);
+        signature.rectTransform.pivot=new Vector2(.5f,0);signature.rectTransform.anchoredPosition=new Vector2(0,1);
         float inputWidth=Mathf.Min(540,width-172);
         RectTransform inputRect = Rect("ProfileNickname",root,left+172,top+88,inputWidth,66);
         Image inputHit=inputRect.gameObject.AddComponent<Image>();inputHit.color=Color.clear;

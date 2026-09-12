@@ -127,7 +127,8 @@ public sealed class PokerButtonTheme : MonoBehaviour
         if (background == null)
             return;
 
-        if (Application.isPlaying)
+        var responsiveLabel=button.transform.Find("ResponsiveLabel");
+        if (Application.isPlaying && responsiveLabel==null)
             ConfigureMobileTouchTarget(button);
 
         bool primary = button.gameObject.scene.name == "Game" && button.name == "CheckButton";
@@ -155,6 +156,9 @@ public sealed class PokerButtonTheme : MonoBehaviour
             return;
 
         label.color = button.interactable ? LabelColor : DisabledLabelColor;
+        // Runtime shop/profile controls size their labels to the actual cell.
+        // Do not impose the main menu's fixed 40-unit caption or an overlapping hit area.
+        if(responsiveLabel!=null)return;
         // This panel owns its responsive typography. Periodic theme refresh must
         // not replace its font limits after it becomes visible.
         if(button.GetComponentInParent<HotSeatHandRankPanelUI>(true)!=null)return;

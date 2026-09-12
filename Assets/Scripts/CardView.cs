@@ -30,8 +30,8 @@ public class CardView : MonoBehaviour
 
         cardImage.sprite = backSprite;
         cardImage.color = Color.white;
-        // Keep the portrait artwork proportional inside the existing card
-        // bounds. Front-card geometry remains unchanged when revealed.
+        // The deal owns the shared 0.72 card ratio for both faces and backs.
+        // Fill those bounds so differing artwork margins cannot make a back narrower.
         cardImage.preserveAspect = false;
         cardImage.enabled = true;
     }

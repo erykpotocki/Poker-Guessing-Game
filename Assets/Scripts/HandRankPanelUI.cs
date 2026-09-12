@@ -1106,7 +1106,17 @@ public class HandRankPanelUI : MonoBehaviour
         if(target!=null)
         {
             var scroll=target.GetComponentInParent<ScrollRect>();
-            if(scroll!=null){scroll.StopMovement();((RectTransform)target.transform).anchoredPosition=Vector2.zero;}
+            if(scroll!=null&&scroll.viewport!=null)
+            {
+                scroll.StopMovement();
+                var rect=(RectTransform)target.transform;
+                rect.SetParent(scroll.viewport,false);
+                rect.anchorMin=new Vector2(0,1);rect.anchorMax=Vector2.one;rect.pivot=new Vector2(.5f,1);
+                rect.sizeDelta=new Vector2(0,rect.sizeDelta.y);rect.anchoredPosition=Vector2.zero;
+                scroll.content=rect;
+                LayoutRebuilder.ForceRebuildLayoutImmediate(rect);
+                scroll.verticalNormalizedPosition=1;
+            }
         }
     }
 

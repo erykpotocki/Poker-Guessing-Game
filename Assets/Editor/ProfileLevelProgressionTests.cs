@@ -4,6 +4,107 @@ using PokerProfile;
 
 public class ProfileLevelProgressionTests
 {
+    [UnityEngine.TestTools.UnityTest]
+    public System.Collections.IEnumerator WalletGainSurvivesSceneBarReplacement()
+    {
+        yield return new UnityEngine.TestTools.EnterPlayMode();
+        var flags=System.Reflection.BindingFlags.Static|System.Reflection.BindingFlags.NonPublic;
+        var dataField=typeof(PlayerProfileService).GetField("current",flags);
+        var goldField=typeof(PortraitMenuTopBar).GetField("lastGold",flags);
+        var diamondField=typeof(PortraitMenuTopBar).GetField("lastDiamonds",flags);
+        var original=dataField.GetValue(null);var oldGold=goldField.GetValue(null);var oldDiamonds=diamondField.GetValue(null);
+        var canvasObject=new UnityEngine.GameObject("WalletTestCanvas",typeof(UnityEngine.RectTransform),typeof(UnityEngine.Canvas));
+        try
+        {
+            var save=new PlayerSave();save.Wallet.Coins=10;save.Wallet.RewardCurrency=12;
+            dataField.SetValue(null,save);goldField.SetValue(null,-1L);diamondField.SetValue(null,-1L);
+            var canvas=canvasObject.GetComponent<UnityEngine.Canvas>();canvas.renderMode=UnityEngine.RenderMode.ScreenSpaceOverlay;
+            UnityEngine.Canvas.ForceUpdateCanvases();PortraitMenuTopBar.Ensure(canvas);
+            var bar=canvasObject.transform.Find("PortraitMenuTopBar");
+            Assert.That(bar.Find("Gold").GetComponent<TMPro.TMP_Text>().text,Is.EqualTo("10"));
+            UnityEngine.Object.Destroy(bar.gameObject);yield return null;
+            save.Wallet.Coins=15;
+            PortraitMenuTopBar.Ensure(canvas);bar=canvasObject.transform.Find("PortraitMenuTopBar");
+            Assert.That(bar.Find("Gold/CurrencyGain").GetComponent<TMPro.TMP_Text>().text,Is.EqualTo("+5"));
+            Assert.That(bar.Find("Diamonds").GetComponent<TMPro.TMP_Text>().text,Is.EqualTo("12"));
+            yield return new UnityEngine.WaitForSecondsRealtime(1.2f);
+            Assert.That(bar.Find("Gold").GetComponent<TMPro.TMP_Text>().text,Is.EqualTo("15"));
+            Assert.That(bar.Find("Gold/CurrencyGain"),Is.Null);
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(canvasObject);
+            dataField.SetValue(null,original);goldField.SetValue(null,oldGold);diamondField.SetValue(null,oldDiamonds);
+        }
+        yield return new UnityEngine.TestTools.ExitPlayMode();
+    }
+
+    [Test]
+    public void FullBackCatalogHasExpectedPricesAndSpinExclusions()
+    {
+        var offers=CosmeticCatalog.All("back");
+        Assert.That(offers.Count,Is.GreaterThan(40));
+        var ids=new System.Collections.Generic.HashSet<string>();
+        foreach(var offer in offers)
+        {
+            Assert.That(ids.Add(offer.Id),Is.True,"Duplicate: "+offer.Id);
+            Assert.That(offer.Sprite,Is.Not.Null,offer.Id);
+            if(offer.Id.EndsWith("wood")){Assert.That(offer.Gold,Is.EqualTo(250));Assert.That(offer.Spin,Is.True);}
+            if(offer.Id.EndsWith("clasic")){Assert.That(offer.Gold,Is.EqualTo(50));Assert.That(offer.Spin,Is.True);}
+        }
+        for(int i=15;i<=24;i++)
+        {
+            var offer=CosmeticCatalog.Get("back",i+"prestige");
+            Assert.That(offer.Gold,Is.EqualTo(10000));Assert.That(offer.Diamonds,Is.EqualTo(1000));
+            Assert.That(offer.Both,Is.True);Assert.That(offer.Spin,Is.False);
+        }
+        foreach(string id in new[]{"2","3","4","5"})
+        {var offer=CosmeticCatalog.Get("back",id);Assert.That(offer.Gold,Is.EqualTo(1000));Assert.That(offer.Spin,Is.True);}
+        foreach(string id in new[]{"22","33","44","55","66"})
+        {var offer=CosmeticCatalog.Get("back",id);Assert.That(offer.Purchasable,Is.False);Assert.That(offer.Spin,Is.True);}
+        var fresh=new PlayerSave();
+        Assert.That(fresh.Profile.SelectedCardBackId,Is.EqualTo("6"));
+        Assert.That(fresh.Inventory.OwnedCardBacks,Does.Contain("6"));
+        Assert.That(CardBackDatabase.OnlineSprites[0].name,Is.EqualTo("6"));
+    }
+
+    [Test]
+    public void MenuThemePreservesResponsiveShopCaptions()
+    {
+        var root=new UnityEngine.GameObject("TestUi",typeof(UnityEngine.RectTransform));
+        try
+        {
+            var button=ShopUI.Button(root.transform,"Nieukończone / w trakcie",0,0,280,90,()=>{});
+            var label=button.GetComponentInChildren<TMPro.TMP_Text>();
+            PokerButtonTheme.ApplyTo(button);
+            Assert.That(label.enableAutoSizing,Is.True);
+            Assert.That(label.fontSizeMax,Is.EqualTo(25));
+            Assert.That(button.transform.Find("__MobileTouchTarget"),Is.Null);
+        }
+        finally{UnityEngine.Object.DestroyImmediate(root);}
+    }
+
+    [Test]
+    public void GameCategoriesBecomeTheVisibleScrollContentImmediately()
+    {
+        var scene=UnityEditor.SceneManagement.EditorSceneManager.OpenScene("Assets/Scenes/Game.unity",UnityEditor.SceneManagement.OpenSceneMode.Additive);
+        try
+        {
+            HandRankPanelUI panel=null;
+            foreach(var root in scene.GetRootGameObjects())
+            {panel=root.GetComponentInChildren<HandRankPanelUI>(true);if(panel!=null)break;}
+            Assert.That(panel,Is.Not.Null);
+            typeof(HandRankPanelUI).GetMethod("ResolveReferences",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Invoke(panel,null);
+            panel.ShowCategories();
+            var scroll=panel.GetComponentInChildren<UnityEngine.UI.ScrollRect>(true);
+            Assert.That(scroll.content.name,Is.EqualTo("CategoryList"));
+            Assert.That(scroll.content.parent,Is.EqualTo(scroll.viewport));
+            Assert.That(scroll.content.gameObject.activeSelf,Is.True);
+            Assert.That(scroll.content.GetComponentsInChildren<UnityEngine.UI.Button>().Length,Is.EqualTo(9));
+        }
+        finally{UnityEditor.SceneManagement.EditorSceneManager.CloseScene(scene,true);}
+    }
+
     [Test]
     public void CombinedPrestigePurchaseNeverPartiallyCharges()
     {

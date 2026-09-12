@@ -1,7 +1,6 @@
 # Dokończenie zmian — 12 września 2026
 
-Wersja robocza: `codex/finish-game-updates`, utworzona z `dev-all-2026-09-11` (3d027e4).
-Główny katalog był przełączony na starszą gałąź `main`; obecnych tam zmian użytkownika nie przenoszono ani nie usuwano.
+Aktualny kod znajduje się na `main` w głównym katalogu projektu. Scalono `codex/finish-game-updates` oraz historię pozostałych gałęzi rozwojowych. Lokalne zmiany użytkownika w avatarach zostały zachowane.
 
 ## Zachowanie
 
@@ -23,4 +22,16 @@ Główny katalog był przełączony na starszą gałąź `main`; obecnych tam zm
 - Kompilacja wszystkich skryptów przez .NET z referencjami lokalnego Unity: 0 błędów.
 - Samodzielny harness: 324 asercje zasad nagród, misji, zakupów, cen, kolejności ramek i EXP zakończone powodzeniem. W tym teście grafiki/ładowanie Unity zastąpiono prostymi obiektami, wykorzystując nazwy rzeczywistych zasobów.
 - Dodano/zmieniono testy NUnit w `Assets/Editor/ProfileLevelProgressionTests.cs`.
-- Próba uruchomienia dodatkowego Unity w trybie batch zakończyła się wyjątkiem Win32 przed utworzeniem logu. Proces 17320 został zatrzymany. Testy Play Mode, renderowanie oraz połączenie dwóch klientów wymagają sprawdzenia w działającym edytorze; nie zostały potwierdzone tą próbą.
+- Unity 6000.3.10f1: testy uruchomiono po zapewnieniu dostępu do systemowego cache. 29 testów Edit Mode przeszło, w tym rzeczywisty katalog rewersów i hierarchia panelu układów w scenie Game. Wyniki: `Logs/feature-tests-final.xml`.
+- Pełny przebieg: 30 testów, 30 zaliczonych, 0 błędów. Obejmuje regresję Play Mode animacji waluty po ponownym utworzeniu paska menu. Wyniki: `Logs/feature-tests-complete.xml`.
+- Testy bez renderera nie potwierdzają wyglądu na fizycznym telefonie ani komunikacji dwóch klientów Photon.
+
+## Poprawki po scaleniu
+
+- Sklep ma całkowicie nieprzezroczyste tło. Profil i spin otwierane z paska nie chowają się za sklepem.
+- Przyciski sklepu, misji i profilu zachowują dopasowywany tekst; okresowe nakładanie motywu menu nie wymusza na nich dużej, stałej czcionki ani nakładających się pól kliknięcia.
+- Aktywna lista układów zostaje bezpośrednią zawartością przewijania już podczas jej wybrania.
+- Karty przy stole mają wspólną proporcję szerokości do wysokości 0,72; rewers wypełnia ten obszar.
+- Podgląd odblokowanego rewersu pobiera grafikę z aktualnego katalogu online.
+- Okno odblokowania zaczyna od zerowej przezroczystości, więc pierwsza klatka nie pojawia się nagle.
+- Pasek pamięta ostatnio widzianą walutę między scenami, aby pokazać animację nagrody także po meczu. Szerokość licznika aktualizuje się podczas przyrostu cyfr.

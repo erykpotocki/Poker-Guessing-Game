@@ -1254,7 +1254,8 @@ public class CardDealTest : MonoBehaviour
             return null;
         }
 
-        rect.sizeDelta *= multiplayerCardSizeMultiplier;
+        float height=rect.rect.height*multiplayerCardSizeMultiplier;
+        rect.sizeDelta=new Vector2(height*.72f,height);
         rect.localScale = Vector3.one;
         rect.anchoredPosition = anchoredPos;
 

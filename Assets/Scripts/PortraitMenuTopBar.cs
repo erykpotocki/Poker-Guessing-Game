@@ -124,12 +124,18 @@ public sealed class PortraitMenuTopBar : MonoBehaviour
         button.targetGraphic = buttonBackground; ColorBlock colors = button.colors; colors.normalColor = Color.white; colors.highlightedColor = new Color(1f, .9f, .58f); colors.pressedColor = new Color(.72f, .72f, .72f); button.colors = colors;
     }
 
-    private long lastGold=-1,lastDiamonds=-1;
+    // The gameplay scene has no menu bar. Retain the last visible balances so
+    // rewards earned there animate when the player returns to the menu.
+    private static long lastGold=-1,lastDiamonds=-1;
     private Coroutine goldAnimation,diamondAnimation;
     private readonly System.Collections.Generic.Dictionary<TMP_Text,long> displayedCurrency=new();
     private void AnimateCurrency(TMP_Text text,long amount,ref long previous,ref Coroutine animation)
     {
-        if(previous==amount)return;
+        if(previous==amount)
+        {
+            if(!displayedCurrency.ContainsKey(text)){text.text=FormatCurrency(amount);displayedCurrency[text]=amount;}
+            return;
+        }
         long start=previous;previous=amount;
         if(animation!=null)StopCoroutine(animation);
         var old=text.transform.Find("CurrencyGain");if(old!=null)Destroy(old.gameObject);
@@ -149,6 +155,7 @@ public sealed class PortraitMenuTopBar : MonoBehaviour
             elapsed+=Time.unscaledDeltaTime;
             displayedCurrency[target]=start+(long)System.Math.Round((end-start)*Mathf.Clamp01(elapsed/duration));
             target.text=FormatCurrency(displayedCurrency[target]);
+            Layout();
             rect.anchoredPosition=new Vector2(0,-8-18*elapsed);
             var color=target.color;color.a=1-Mathf.Clamp01((elapsed-duration)/.7f);label.color=color;
             yield return null;

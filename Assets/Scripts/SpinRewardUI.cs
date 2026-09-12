@@ -24,7 +24,7 @@ public sealed class SpinRewardUI : MonoBehaviour
         GameObject obj=new GameObject("SpinRewardOverlay",typeof(RectTransform),typeof(Image),typeof(Canvas),typeof(GraphicRaycaster),typeof(SpinRewardUI));
         obj.transform.SetParent(owner.rootCanvas.transform,false);
         RectTransform root=obj.transform as RectTransform; root.anchorMin=Vector2.zero;root.anchorMax=Vector2.one;root.offsetMin=root.offsetMax=Vector2.zero;PortraitMenuTopBar.ApplyOverlayInset(root);
-        obj.GetComponent<Image>().color=new Color(0,0,0,.94f); Canvas c=obj.GetComponent<Canvas>();c.overrideSorting=true;c.sortingOrder=620;
+        obj.GetComponent<Image>().color=new Color(0,0,0,.94f); Canvas c=obj.GetComponent<Canvas>();c.overrideSorting=true;c.sortingOrder=680;
         Button backdrop=obj.AddComponent<Button>();backdrop.transition=Selectable.Transition.None;
         backdrop.onClick.AddListener(()=>{obj.SetActive(false);Destroy(obj);});
         // The panel Image catches clicks inside; only the surrounding backdrop dismisses.
