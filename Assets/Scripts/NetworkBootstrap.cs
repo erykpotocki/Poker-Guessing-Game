@@ -1,5 +1,6 @@
 using Photon.Pun;
 using Photon.Realtime;
+using System.Collections;
 using UnityEngine;
 
 public class NetworkBootstrap : MonoBehaviourPunCallbacks
@@ -8,6 +9,23 @@ public class NetworkBootstrap : MonoBehaviourPunCallbacks
     private static string sessionUserId;
 
     private const string UserIdPrefsKey = "PhotonUserId";
+    private const string ResumePendingPrefsKey = "ResumePending";
+    private const string LastRoomCodePrefsKey = "lastRoomCode";
+    private bool shouldRecoverRoom;
+    private bool rejoinAfterMasterConnection;
+    private bool recoveryRunning;
+    private bool joinedRoomThisSession;
+    public static bool PreserveRoomOnLeave;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void EnsureBootstrapExists()
+    {
+        if (instance != null)
+            return;
+
+        GameObject bootstrap = new GameObject(nameof(NetworkBootstrap));
+        bootstrap.AddComponent<NetworkBootstrap>();
+    }
 
     private void Awake()
     {
@@ -22,6 +40,7 @@ public class NetworkBootstrap : MonoBehaviourPunCallbacks
 
         PhotonNetwork.AutomaticallySyncScene = true;
         PhotonNetwork.GameVersion = "0.1";
+        PhotonNetwork.KeepAliveInBackground = 300f;
 
         EnsurePersistentUserIdBeforeConnect();
     }
@@ -42,6 +61,133 @@ public class NetworkBootstrap : MonoBehaviourPunCallbacks
     public override void OnConnectedToMaster()
     {
         Debug.Log("Photon connected to Master | UserId = " + PhotonNetwork.LocalPlayer?.UserId);
+
+        if (rejoinAfterMasterConnection)
+        {
+            rejoinAfterMasterConnection = false;
+            TryRejoinSavedRoom();
+        }
+    }
+
+    public override void OnDisconnected(DisconnectCause cause)
+    {
+        if (PlayerPrefs.GetInt(ResumePendingPrefsKey, 0) != 1)
+            return;
+
+        shouldRecoverRoom = true;
+        recoveryRunning = false;
+        if (Application.isFocused)
+            RequestRoomRecovery();
+    }
+
+    public override void OnJoinedRoom()
+    {
+        joinedRoomThisSession = true;
+        shouldRecoverRoom = false;
+        rejoinAfterMasterConnection = false;
+        recoveryRunning = false;
+        PreserveRoomOnLeave=false;
+        PlayerPrefs.SetString(LastRoomCodePrefsKey,PhotonNetwork.CurrentRoom.Name);
+        PlayerPrefs.SetInt(ResumePendingPrefsKey, 1);
+        PlayerPrefs.Save();
+    }
+
+    private void OnApplicationPause(bool paused)
+    {
+        if (paused)
+        {
+            RememberCurrentRoom();
+            return;
+        }
+
+        if (shouldRecoverRoom || PlayerPrefs.GetInt(ResumePendingPrefsKey, 0) == 1)
+            RequestRoomRecovery();
+    }
+
+    public override void OnLeftRoom()
+    {
+        // Explicit leave (including a host kick) must cancel background recovery.
+        StopAllCoroutines();
+        joinedRoomThisSession = false;
+        shouldRecoverRoom = rejoinAfterMasterConnection = recoveryRunning = false;
+        if(PreserveRoomOnLeave)return;
+        PlayerPrefs.SetInt(ResumePendingPrefsKey, 0);
+        PlayerPrefs.DeleteKey(LastRoomCodePrefsKey);
+        PlayerPrefs.Save();
+    }
+
+    private void OnApplicationFocus(bool focused)
+    {
+        if (focused && (shouldRecoverRoom ||
+            PlayerPrefs.GetInt(ResumePendingPrefsKey, 0) == 1))
+        {
+            RequestRoomRecovery();
+        }
+    }
+
+    private void RememberCurrentRoom()
+    {
+        if (!PhotonNetwork.InRoom || PhotonNetwork.CurrentRoom == null)
+            return;
+
+        shouldRecoverRoom = true;
+        PlayerPrefs.SetString(LastRoomCodePrefsKey, PhotonNetwork.CurrentRoom.Name);
+        PlayerPrefs.SetInt(ResumePendingPrefsKey, 1);
+        PlayerPrefs.Save();
+    }
+
+    private IEnumerator RecoverRoomAfterResume()
+    {
+        yield return new WaitForSecondsRealtime(0.75f);
+
+        if (PhotonNetwork.InRoom)
+        {
+            OnJoinedRoom();
+            yield break;
+        }
+
+        EnsurePersistentUserIdBeforeConnect();
+        if (!PhotonNetwork.IsConnected)
+        {
+            if (!PhotonNetwork.ReconnectAndRejoin())
+            {
+                rejoinAfterMasterConnection = true;
+                PhotonNetwork.ConnectUsingSettings();
+            }
+            yield break;
+        }
+
+        if (PhotonNetwork.IsConnectedAndReady)
+            TryRejoinSavedRoom();
+        else
+            rejoinAfterMasterConnection = true;
+
+    }
+
+    private void RequestRoomRecovery()
+    {
+        // A stale saved room must not rotate a fresh app launch into a match.
+        // Automatic recovery is only for a room entered during this app session.
+        if (!joinedRoomThisSession || recoveryRunning)
+            return;
+
+        recoveryRunning = true;
+        StartCoroutine(RecoverRoomAfterResume());
+    }
+
+    private void TryRejoinSavedRoom()
+    {
+        string roomCode = PlayerPrefs.GetString(LastRoomCodePrefsKey, "");
+        if (!string.IsNullOrWhiteSpace(roomCode) && !PhotonNetwork.InRoom)
+            PhotonNetwork.RejoinRoom(roomCode);
+        else if (string.IsNullOrWhiteSpace(roomCode))
+            recoveryRunning = false;
+    }
+
+    public override void OnJoinRoomFailed(short returnCode, string message)
+    {
+        recoveryRunning = false;
+        Debug.LogWarning($"Nie udało się wrócić do pokoju: {message} ({returnCode})");
     }
 
     private void EnsurePersistentUserIdBeforeConnect()

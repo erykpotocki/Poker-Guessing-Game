@@ -1,4 +1,5 @@
 using Photon.Pun;
+using System.Collections;
 using Photon.Realtime;
 using TMPro;
 using UnityEngine;
@@ -19,6 +20,10 @@ public class JoinRoomUI : MonoBehaviourPunCallbacks
 
     private void Start()
     {
+        if (nickInput != null && string.IsNullOrWhiteSpace(nickInput.text))
+            nickInput.SetTextWithoutNotify(PlayerProfileService.Data.Profile.Nickname);
+        ConfigureResponsiveLayout();
+        ConfigureMobileInputs();
         if (joinButton != null)
         {
             joinButton.onClick.RemoveAllListeners();
@@ -32,6 +37,38 @@ public class JoinRoomUI : MonoBehaviourPunCallbacks
             roomIdInput.onValueChanged.AddListener(_ => Validate());
 
         Validate();
+    }
+
+    private void ConfigureResponsiveLayout()
+    {
+        SetCentered(joinButton != null ? joinButton.transform as RectTransform : null, 0.235f, 560f, 104f);
+        if (joinButton != null) PokerButtonTheme.ApplyTo(joinButton);
+    }
+
+    private void ConfigureMobileInputs()
+    {
+        if (nickInput != null)
+            nickInput.keyboardType = TouchScreenKeyboardType.Default;
+        if (roomIdInput != null)
+        {
+            roomIdInput.keyboardType = TouchScreenKeyboardType.ASCIICapable;
+            roomIdInput.characterValidation = TMP_InputField.CharacterValidation.Alphanumeric;
+        }
+
+        MobileInputFieldUX mobileUx = GetComponent<MobileInputFieldUX>();
+        if (mobileUx == null)
+            mobileUx = gameObject.AddComponent<MobileInputFieldUX>();
+        mobileUx.Configure(0f, nickInput, roomIdInput);
+    }
+
+    private static void SetCentered(RectTransform rect, float anchorY, float width, float height)
+    {
+        if (rect == null) return;
+        rect.anchorMin = rect.anchorMax = new Vector2(0.5f, anchorY);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = new Vector2(width, height);
+        rect.localScale = Vector3.one;
     }
 
     private void Update()
@@ -100,7 +137,26 @@ public class JoinRoomUI : MonoBehaviourPunCallbacks
                 gameStarted = boolValue;
         }
 
-        SceneManager.LoadScene(gameStarted ? gameSceneName : lobbySceneName);
+        if (gameStarted)
+        {
+            MultiplayerLoadingTransition.Begin();
+            StartCoroutine(EnterStartedGame());
+        }
+        else SceneManager.LoadScene(lobbySceneName);
+    }
+
+    private IEnumerator EnterStartedGame()
+    {
+        yield return null;
+        if (!PhotonNetwork.InRoom)
+        {
+            MultiplayerLoadingTransition.Finish();
+            HotSeatOrientationLock.LockPortrait();
+            yield break;
+        }
+        // PUN may already be loading the host's scene after the join response.
+        if (PhotonNetwork.IsMessageQueueRunning)
+            PhotonNetwork.LoadLevel(gameSceneName);
     }
 
     public override void OnJoinRoomFailed(short returnCode, string message)

@@ -6,8 +6,9 @@ using Photon.Pun;
 using Photon.Realtime;
 using UnityEngine;
 using UnityEngine.UI;
+using PokerProfile;
 
-public class TurnManager : MonoBehaviour, IOnEventCallback
+public partial class TurnManager : MonoBehaviour, IOnEventCallback
 {
     [System.Serializable]
     private class CardCountTimingEntry
@@ -97,6 +98,7 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
     private bool isRoundTransitionInProgress = false;
     private bool isHandPanelEventsBound = false;
     private bool isGameOver = false;
+    private Coroutine beginnerBotTurnRoutine;
 
     private int currentTurnIndex = -1;
     private int starterPlayerId = -1;
@@ -122,6 +124,7 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
     public int CurrentRoundNumber => currentRoundNumber;
     public string CurrentBidDisplayText => currentBidDisplayText;
     public bool IsResolutionLocked => isRoundWaitingForResolution || isRoundTransitionInProgress || isGameOver;
+    public bool IsDealingCards => isRoundTransitionInProgress && !isRoundWaitingForResolution && !isGameOver;
 
     private void OnEnable()
     {
@@ -136,6 +139,7 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
 
     private void Start()
     {
+        disconnectedRemovalSeconds = Mathf.Max(disconnectedRemovalSeconds, 300f);
         TryBindHandRankPanel();
         TryResolveRoundLogUI();
         TryResolveCardDealTest();
@@ -189,6 +193,14 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
 
     public void NotifyRoundDealFinished(int nextStarterActorNumber)
     {
+        if (!isInitialized || isGameOver || isRoundWaitingForResolution) return;
+        if (!isRoundTransitionInProgress) return;
+        if (dealBarrierRoutine == null)
+            dealBarrierRoutine = StartCoroutine(WaitForDealBarrier(nextStarterActorNumber));
+    }
+
+    private void CompleteRoundDeal(int nextStarterActorNumber)
+    {
         if (!isInitialized)
             return;
 
@@ -222,8 +234,11 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
 
     private IEnumerator InitializeTurnSystem()
     {
+        if (isInitialized || initializationRunning) yield break;
+        initializationRunning = true;
         if (!PhotonNetwork.InRoom)
         {
+            initializationRunning = false;
             Debug.LogWarning("TurnManager: gracz nie jest w pokoju.");
             yield break;
         }
@@ -240,10 +255,15 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
 
         if (sharedSeatOrder == null || sharedSeatOrder.Count == 0)
         {
+            initializationRunning = false;
             Debug.LogError("TurnManager: nie udało się pobrać wspólnej kolejności graczy.");
             yield break;
         }
 
+        TryResolveCardDealTest();
+        while (PhotonNetwork.InRoom && cardDealTest != null && !cardDealTest.HasSeats)
+            yield return null;
+        if (!PhotonNetwork.InRoom) { initializationRunning = false; yield break; }
         CacheSeatViews();
 
         activePlayerOrder.Clear();
@@ -256,7 +276,8 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
 
             if (PhotonNetwork.CurrentRoom != null &&
                 PhotonNetwork.CurrentRoom.Players != null &&
-                PhotonNetwork.CurrentRoom.Players.ContainsKey(actorNumber))
+                (PhotonNetwork.CurrentRoom.Players.ContainsKey(actorNumber) ||
+                 LobbyBotRegistry.IsBot(actorNumber)))
             {
                 activePlayerOrder.Add(actorNumber);
                 playerPenaltyStageByActorNumber[actorNumber] = 0;
@@ -266,11 +287,13 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
         if (activePlayerOrder.Count == 0)
         {
             Debug.LogError("TurnManager: brak aktywnych graczy do kolejki tur.");
+            initializationRunning = false;
             yield break;
         }
 
         RefreshDisconnectedPlayersFromRoomState();
 
+        EnsureRoundReview();
         bool restoredFromRoom = TryRestoreTurnStateFromRoom();
 
         if (!restoredFromRoom)
@@ -285,7 +308,7 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
             currentBidDisplayText = string.Empty;
             hasDeclarationThisRound = false;
             isRoundWaitingForResolution = false;
-            isRoundTransitionInProgress = false;
+            isRoundTransitionInProgress = true;
             isGameOver = false;
             currentRoundNumber = 1;
             lastDeclarerActorNumber = -1;
@@ -299,6 +322,7 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
             starterPlayerId = activePlayerOrder[currentTurnIndex];
 
         isInitialized = true;
+        initializationRunning = false;
 
         ResetCurrentTurnTimer();
         SetCurrentBidDisplayText(currentBidDisplayText);
@@ -306,7 +330,7 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
         if (!restoredFromRoom)
         {
             ResetRoundLogForNewGame();
-            AddRoundStarterToLog(starterPlayerId);
+            // The first round is logged when dealing finishes, just like later rounds.
             SaveTurnStateToRoom();
         }
 
@@ -320,6 +344,12 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
         }
 
         NotifyActivePlayerChanged();
+        if (restoredFromRoom && isRoundWaitingForResolution)
+            StartCoroutine(ResumeRoundReview());
+        else if (restoredFromRoom && isRoundTransitionInProgress && currentRoundNumber > 1)
+            StartCoroutine(ResumePendingDeal());
+        else if (cardDealTest != null && cardDealTest.HasFinishedDealing)
+            NotifyRoundDealFinished(starterPlayerId);
     }
 
     public void DebugNextTurn()
@@ -435,12 +465,21 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
 
         if (photonEvent.Code == RaiseChosenEventCode)
         {
-            HandleNetworkRaiseEvent(photonEvent.CustomData);
+            if (IsValidMoveSender(photonEvent)) HandleNetworkRaiseEvent(photonEvent.CustomData);
         }
         else if (photonEvent.Code == CheckChosenEventCode)
         {
-            HandleNetworkCheckEvent(photonEvent.CustomData);
+            if (IsValidMoveSender(photonEvent)) HandleNetworkCheckEvent(photonEvent.CustomData);
         }
+    }
+
+    private bool IsValidMoveSender(EventData ev)
+    {
+        if (IsResolutionLocked || ev.CustomData is not object[] data || data.Length == 0 || data[0] is not int actor)
+            return false;
+        return LobbyBotRegistry.IsBot(actor)
+            ? PhotonNetwork.MasterClient != null && ev.Sender == PhotonNetwork.MasterClient.ActorNumber
+            : ev.Sender == actor;
     }
 
     private void HandleNetworkRaiseEvent(object customData)
@@ -462,6 +501,14 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
                 "TurnManager: odebrano Przebij od nieaktywnego gracza. Oczekiwany = " +
                 expectedActor + ", odebrany = " + actorNumber
             );
+            return;
+        }
+
+        string candidateId = GetHandIdFromOptionText(selectedRankText);
+        string previousId = hasDeclarationThisRound ? GetHandIdFromOptionText(currentDeclaredRankText) : null;
+        if (!HandRankCatalog.CanBeat(candidateId, previousId))
+        {
+            Debug.LogWarning("Odrzucono niedozwolone podbicie: " + selectedRankText);
             return;
         }
 
@@ -489,6 +536,7 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
 
     private void HandleNetworkCheckEvent(object customData)
     {
+        if (!hasDeclarationThisRound || IsResolutionLocked) return;
         if (customData is not object[] data || data.Length < 1)
             return;
 
@@ -538,7 +586,6 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
 
         int totalCardsInRound = GetCurrentRoundTotalCardCount();
         float checkScreenSeconds = GetCheckScreenSeconds(totalCardsInRound);
-        float resultScreenSeconds = GetResultScreenSeconds(totalCardsInRound);
 
         if (cardDealTest != null)
         {
@@ -558,7 +605,16 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
 
         List<int> activeOrderBeforeResolution = new List<int>(activePlayerOrder);
 
+        EnsureRoundReview();
+        roundReview.Record(currentRoundNumber, currentDeclaredRankText,
+            GetHandIdFromOptionText(currentDeclaredRankText), declaredExists, loserActorNumber,
+            activeOrderBeforeResolution, cardDealTest.GetAllRoundCardsForEvaluation(), cardDealTest.GetRoundCardsByPlayerForHistory(),
+            checkingPlayerActorNumber, lastDeclarerActorNumber);
+        reviewRound = currentRoundNumber;
+        applyingReviewResult = true;
+
         bool eliminated = ApplyLossToPlayer(loserActorNumber, out int nextCardCount);
+        roundReview.CommitOutcome(eliminated);
         if (eliminated)
         {
             AddSystemLog("<b>" + GetPlayerDisplayName(loserActorNumber) + "</b> odpada z gry");
@@ -569,14 +625,21 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
             AddSystemLog("<b>" + GetPlayerDisplayName(loserActorNumber) + "</b> ma teraz " + nextCardCount + " " + GetCardWord(nextCardCount));
         }
 
+        applyingReviewResult = false;
         SaveTurnStateToRoom();
 
-        yield return new WaitForSeconds(resultScreenSeconds);
+        HighlightReviewedCards();
+        yield return WaitForRoundReady(activeOrderBeforeResolution);
+        ContinueAfterReviewedRound(loserActorNumber, activeOrderBeforeResolution);
+    }
+
+    private void ContinueAfterReviewedRound(int loserActorNumber, List<int> activeOrderBeforeResolution)
+    {
 
         if (activePlayerOrder.Count <= 1)
         {
             HandleGameOver();
-            yield break;
+            return;
         }
 
         int nextStarterActorNumber = loserActorNumber;
@@ -589,7 +652,10 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
         currentDeclaredRankText = null;
         hasDeclarationThisRound = false;
         isRoundWaitingForResolution = false;
-        isRoundTransitionInProgress = false;
+        isRoundTransitionInProgress = true;
+        reviewRound = 0;
+        starterPlayerId = nextStarterActorNumber;
+        nextDealLoser = loserActorNumber;
         lastDeclarerActorNumber = -1;
         checkingPlayerActorNumber = -1;
 
@@ -666,6 +732,9 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
             nextStarterActorNumber = GetNextActivePlayerAfterSnapshot(activeOrderBeforeResolution, actorNumber);
         }
 
+        starterPlayerId = nextStarterActorNumber;
+        nextDealLoser = actorNumber;
+
         currentRoundNumber++;
         currentDeclaredRankText = null;
         hasDeclarationThisRound = false;
@@ -725,7 +794,7 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
 
         if (activePlayerOrder.Count <= 1)
         {
-            HandleGameOver();
+            HandleGameOver(false);
             yield break;
         }
 
@@ -787,8 +856,9 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
     {
         int actorNumber = GetCurrentPlayerActorNumber();
 
-        RefreshActiveHighlight(actorNumber);
+        RefreshActiveHighlight(IsResolutionLocked ? -1 : actorNumber);
         RefreshLocalHandPanelState();
+        ScheduleBeginnerBotTurn(actorNumber);
 
         if (logTurnFlow)
         {
@@ -796,6 +866,139 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
         }
 
         OnActivePlayerChanged?.Invoke(actorNumber);
+    }
+
+    private void ScheduleBeginnerBotTurn(int actorNumber)
+    {
+        if (beginnerBotTurnRoutine != null)
+        {
+            StopCoroutine(beginnerBotTurnRoutine);
+            beginnerBotTurnRoutine = null;
+        }
+
+        if (!PhotonNetwork.IsMasterClient || !LobbyBotRegistry.IsBot(actorNumber) ||
+            isRoundWaitingForResolution || isRoundTransitionInProgress || isGameOver)
+        {
+            return;
+        }
+
+        beginnerBotTurnRoutine = StartCoroutine(PlayBeginnerBotTurn(actorNumber));
+    }
+
+    private IEnumerator PlayBeginnerBotTurn(int actorNumber)
+    {
+        TryResolveCardDealTest();
+
+        float cardsWait = 0f;
+        while (cardsWait < 15f && GetCurrentPlayerActorNumber() == actorNumber &&
+               cardDealTest != null && cardDealTest.GetCardsForPlayer(actorNumber).Count == 0)
+        {
+            cardsWait += Time.deltaTime;
+            yield return null;
+        }
+
+        yield return new WaitForSeconds(UnityEngine.Random.Range(2f, 3f));
+
+        if (!PhotonNetwork.IsMasterClient || GetCurrentPlayerActorNumber() != actorNumber ||
+            isRoundWaitingForResolution || isRoundTransitionInProgress || isGameOver)
+        {
+            beginnerBotTurnRoutine = null;
+            yield break;
+        }
+
+        string declaration = ChooseBeginnerBotDeclaration(actorNumber);
+        beginnerBotTurnRoutine = null;
+
+        bool check = declaration == null;
+        object[] data = check ? new object[] { actorNumber } : new object[] { actorNumber, declaration };
+        RaiseEventOptions options = new RaiseEventOptions { Receivers = ReceiverGroup.All };
+        PhotonNetwork.RaiseEvent(check ? CheckChosenEventCode : RaiseChosenEventCode, data, options, SendOptions.SendReliable);
+    }
+
+    private string ChooseBeginnerBotDeclaration(int actorNumber)
+    {
+        string truthfulId = GetStrongestBeginnerBotHandId(actorNumber);
+        int truthfulIndex = HandRankCatalog.GetIndex(truthfulId);
+
+        if (!hasDeclarationThisRound || string.IsNullOrWhiteSpace(currentDeclaredRankText))
+            return HandRankCatalog.GetDisplayName(truthfulId);
+
+        string currentId = GetHandIdFromOptionText(currentDeclaredRankText);
+        int currentIndex = HandRankCatalog.GetIndex(currentId);
+
+        string nextId = MultiplayerHandRules.NextHigher(currentId);
+        if (nextId == null) return null;
+        List<CardSpriteEntry> ownCards = cardDealTest != null ? cardDealTest.GetCardsForPlayer(actorNumber) : new List<CardSpriteEntry>();
+        List<CardSpriteEntry> supportingCards = MultiplayerHandRules.MatchingCards(currentId, ownCards, out bool proven);
+        if(LobbyBotRegistry.TryGetBot(actorNumber,out var difficulty)&&difficulty.Advanced)
+        {
+            int total=cardDealTest.GetAllDealtCards().Count;
+            float likelihood=AdvancedBotOdds.Estimate(currentId,ownCards,total);
+            if(!proven&&likelihood<.55f)return null;
+            if(truthfulIndex>currentIndex)return HandRankCatalog.GetDisplayName(truthfulId);
+            if(AdvancedBotOdds.Estimate(nextId,ownCards,total)<.35f&&UnityEngine.Random.value>.12f)return null;
+            return HandRankCatalog.GetDisplayName(nextId);
+        }
+        // A beginner only considers its own hand, never opponents' hidden cards.
+        float checkChance = proven ? 0f : supportingCards.Count > 0 ? 0.08f : 0.16f;
+        if (UnityEngine.Random.value < checkChance) return null;
+
+        if (truthfulIndex > currentIndex)
+            return HandRankCatalog.GetDisplayName(truthfulId);
+
+        // Occasionally bluff several strength levels higher, still respecting suit ties.
+        if (UnityEngine.Random.value < 0.20f)
+        {
+            int steps = UnityEngine.Random.Range(3, 8);
+            for (int step = 1; step < steps; step++)
+            {
+                string higher = MultiplayerHandRules.NextHigher(nextId);
+                if (higher == null) break;
+                nextId = higher;
+            }
+        }
+
+        return HandRankCatalog.GetDisplayName(nextId);
+    }
+
+    private string GetStrongestBeginnerBotHandId(int actorNumber)
+    {
+        TryResolveCardDealTest();
+        List<CardSpriteEntry> cards = cardDealTest != null
+            ? cardDealTest.GetCardsForPlayer(actorNumber)
+            : new List<CardSpriteEntry>();
+
+        Dictionary<string, int> counts = new Dictionary<string, int>();
+        for (int i = 0; i < cards.Count; i++)
+        {
+            CardSpriteEntry card = cards[i];
+            if (card == null)
+                continue;
+
+            string rank = NormalizeRank(card.rank.ToString());
+            if (string.IsNullOrEmpty(rank))
+                continue;
+
+            counts[rank] = counts.TryGetValue(rank, out int count) ? count + 1 : 1;
+        }
+
+        for (int requiredCount = 3; requiredCount >= 1; requiredCount--)
+        {
+            for (int i = RankOrder.Length - 1; i >= 0; i--)
+            {
+                string rank = RankOrder[i];
+                if (!counts.TryGetValue(rank, out int count) || count < requiredCount)
+                    continue;
+
+                if (requiredCount == 3)
+                    return "TRIPS_" + rank;
+                if (requiredCount == 2)
+                    return "PAIR_" + rank;
+                return "HIGH_" + rank;
+            }
+        }
+
+        return "HIGH_9";
     }
 
     private void SetCurrentBidDisplayText(string value)
@@ -1008,6 +1211,9 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
 
     private string GetPlayerDisplayName(int actorNumber)
     {
+        if (LobbyBotRegistry.TryGetBot(actorNumber, out LobbyBotInfo bot))
+            return bot.Name;
+
         if (PhotonNetwork.CurrentRoom != null &&
             PhotonNetwork.CurrentRoom.Players != null &&
             PhotonNetwork.CurrentRoom.Players.TryGetValue(actorNumber, out Player player) &&
@@ -1026,6 +1232,12 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
     {
         if (avatarDatabase == null || avatarDatabase.avatars == null || avatarDatabase.avatars.Length == 0)
             return null;
+
+        if (LobbyBotRegistry.TryGetBot(actorNumber, out LobbyBotInfo bot))
+        {
+            int botAvatarIndex = Mathf.Clamp(bot.AvatarIndex, 0, avatarDatabase.avatars.Length - 1);
+            return avatarDatabase.avatars[botAvatarIndex];
+        }
 
         if (PhotonNetwork.CurrentRoom == null ||
             PhotonNetwork.CurrentRoom.Players == null ||
@@ -1196,7 +1408,7 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
         return activePlayerOrder[0];
     }
 
-    private void HandleGameOver()
+    private void HandleGameOver(bool completedMatch=true)
     {
         isGameOver = true;
         isRoundWaitingForResolution = false;
@@ -1205,6 +1417,33 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
         int winnerActorNumber = activePlayerOrder.Count > 0 ? activePlayerOrder[0] : -1;
         string winnerName = winnerActorNumber > 0 ? GetPlayerDisplayName(winnerActorNumber) : "BRAK";
         Sprite winnerAvatar = winnerActorNumber > 0 ? GetPlayerAvatarSprite(winnerActorNumber) : null;
+
+        // Unlock progression only after the complete match; keep the frame unequipped.
+        if (completedMatch && PhotonNetwork.LocalPlayer != null && PhotonNetwork.CurrentRoom != null)
+        {
+            TryGetSharedGameSeed(out int seed);
+            bool localWon = winnerActorNumber == PhotonNetwork.LocalPlayer.ActorNumber;
+            var rewardProps=PhotonNetwork.CurrentRoom.CustomProperties;
+            int bots=rewardProps.TryGetValue("rewardBots",out object botValue) && botValue is int botCount?botCount:0;
+            int duration=rewardProps.TryGetValue("rewardStartedMs",out object startValue) && startValue is int started
+                ?Mathf.Max(0,unchecked(PhotonNetwork.ServerTimestamp-started)/1000):0;
+            int humans=0;
+            int[] participants=rewardProps.TryGetValue("rewardActors",out object actorValue)?actorValue as int[]:null;
+            foreach(Player participant in PhotonNetwork.PlayerList)
+                if(!participant.IsInactive && (participants==null || System.Array.IndexOf(participants,participant.ActorNumber)>=0))humans++;
+            bool eligible=participants==null || System.Array.IndexOf(participants,PhotonNetwork.LocalPlayer.ActorNumber)>=0;
+            if (eligible && PlayerProfileService.CompleteMatch(PhotonNetwork.CurrentRoom.Name + ":" + seed, localWon,bots,humans,duration,LobbyBotRegistry.GetBots().Exists(bot=>bot.Advanced),localWon?1:roundReview!=null?roundReview.Placement(PhotonNetwork.LocalPlayer.ActorNumber,bots+humans):bots+humans))
+            {
+                foreach (Player opponent in PhotonNetwork.PlayerList)
+                {
+                    if (opponent == null || opponent.ActorNumber == PhotonNetwork.LocalPlayer.ActorNumber) continue;
+                    string profileId = opponent.CustomProperties != null &&
+                        opponent.CustomProperties.TryGetValue(PhotonAvatarSync.ProfileIdKey,out object rawId)
+                        ? rawId?.ToString() : "";
+                    PlayerProfileService.RecordOpponentMatch(profileId, opponent.NickName, localWon);
+                }
+            }
+        }
 
         AddSystemLog("<b>Koniec gry</b>");
         AddSystemLog("Wygrywa: <b>" + winnerName + "</b>");
@@ -1304,7 +1543,7 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
             return false;
         }
 
-        List<CardSpriteEntry> dealtCards = cardDealTest.GetAllDealtCards();
+        List<CardSpriteEntry> dealtCards = cardDealTest.GetAllRoundCardsForEvaluation();
         if (dealtCards == null || dealtCards.Count == 0)
             return false;
 
@@ -1694,7 +1933,8 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
             int actorNumber = restoredOrder[i];
 
             if (PhotonNetwork.CurrentRoom.Players != null &&
-                PhotonNetwork.CurrentRoom.Players.ContainsKey(actorNumber))
+                (PhotonNetwork.CurrentRoom.Players.ContainsKey(actorNumber) ||
+                 LobbyBotRegistry.IsBot(actorNumber)))
             {
                 validatedOrder.Add(actorNumber);
             }
@@ -1752,6 +1992,7 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
 
     private void SaveTurnStateToRoom()
     {
+        if (applyingReviewResult) return;
         if (!PhotonNetwork.InRoom || PhotonNetwork.CurrentRoom == null)
             return;
 
@@ -1775,6 +2016,10 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
             { TurnStateGameOverKey, isGameOver },
             { GameEndedKey, isGameOver }
         };
+
+        props[ReviewRoundKey] = reviewRound;
+        props[NextDealLoserKey] = nextDealLoser;
+        if (roundReview != null) props[RoundReviewUI.HistoryKey] = roundReview.SerializeHistory();
 
         PhotonNetwork.CurrentRoom.SetCustomProperties(props);
     }
@@ -2049,6 +2294,13 @@ public class TurnManager : MonoBehaviour, IOnEventCallback
         for (int i = 0; i < activePlayerOrder.Count; i++)
         {
             int actorNumber = activePlayerOrder[i];
+
+            if (LobbyBotRegistry.IsBot(actorNumber))
+            {
+                disconnectedActorNumbers.Remove(actorNumber);
+                continue;
+            }
+
             bool wasDisconnected = disconnectedActorNumbers.Contains(actorNumber);
             bool isDisconnectedNow = false;
 

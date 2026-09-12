@@ -38,6 +38,7 @@ public class CardDealTest : MonoBehaviour
 
     [Header("Card settings")]
     [SerializeField] private int backIndex = 0;
+    [SerializeField, Min(0.5f)] private float multiplayerCardSizeMultiplier = 1f;
 
     [Header("Resume / restore")]
     [SerializeField] private bool tryRestoreSnapshotOnStart = true;
@@ -69,6 +70,9 @@ public class CardDealTest : MonoBehaviour
     private readonly Dictionary<int, List<DealtCardView>> dealtViewsByPlayerId = new Dictionary<int, List<DealtCardView>>();
     private readonly List<CardSpriteEntry> allDealtCardsThisRound = new List<CardSpriteEntry>();
     private readonly List<DealtCardView> allDealtViewsThisRound = new List<DealtCardView>();
+    public bool HasFinishedDealing { get; private set; }
+    public bool HasSeats => seatOccupants.Count > 0;
+    public void SetPresentationParent(RectTransform parent) => cardsParent = parent;
 
     private class PlayerDealInfo
     {
@@ -82,6 +86,7 @@ public class CardDealTest : MonoBehaviour
     {
         public int StablePlayerId;
         public Vector2 EndPosition;
+        public float Rotation;
     }
 
     private void Awake()
@@ -190,6 +195,7 @@ public class CardDealTest : MonoBehaviour
 
     public void ClearDealtCardMemory()
     {
+        HasFinishedDealing = false;
         dealtCardsByPlayerId.Clear();
         dealtViewsByPlayerId.Clear();
         allDealtCardsThisRound.Clear();
@@ -207,6 +213,49 @@ public class CardDealTest : MonoBehaviour
     public List<CardSpriteEntry> GetAllDealtCards()
     {
         return new List<CardSpriteEntry>(allDealtCardsThisRound);
+    }
+
+    public List<CardSpriteEntry> GetAllRoundCardsForEvaluation()
+    {
+        if (PhotonNetwork.InRoom && PhotonNetwork.CurrentRoom != null &&
+            PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(
+                RoundCardsSnapshotKey, out object rawSnapshot) &&
+            rawSnapshot is string snapshot && !string.IsNullOrWhiteSpace(snapshot))
+        {
+            Dictionary<int, List<CardSpriteEntry>> parsed =
+                DeserializeRoundSnapshot(snapshot);
+            List<CardSpriteEntry> snapshotCards = new List<CardSpriteEntry>();
+
+            foreach (KeyValuePair<int, List<CardSpriteEntry>> pair in parsed)
+            {
+                if (pair.Value != null)
+                    snapshotCards.AddRange(pair.Value);
+            }
+
+            if (snapshotCards.Count > 0)
+                return snapshotCards;
+        }
+
+        return GetAllDealtCards();
+    }
+
+    public Dictionary<int, List<CardSpriteEntry>> GetRoundCardsByPlayerForHistory()
+    {
+        if (PhotonNetwork.CurrentRoom != null &&
+            PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(RoundCardsSnapshotKey, out object raw) && raw is string snapshot)
+            return DeserializeRoundSnapshot(snapshot);
+        return new Dictionary<int, List<CardSpriteEntry>>(dealtCardsByPlayerId);
+    }
+
+    public void HighlightMatchingCards(List<CardSpriteEntry> matches, bool complete)
+    {
+        Color color = complete ? new Color(0.25f, 1f, 0.45f) : new Color(1f, 0.78f, 0.2f);
+        for (int i = 0; i < allDealtViewsThisRound.Count && i < allDealtCardsThisRound.Count; i++)
+        {
+            CardSpriteEntry card = allDealtCardsThisRound[i];
+            bool matching = card != null && matches.Exists(item => item.rank == card.rank && item.suit == card.suit);
+            if (allDealtViewsThisRound[i] != null) allDealtViewsThisRound[i].SetReviewHighlight(matching, color);
+        }
     }
 
     public void RevealAllDealtCards()
@@ -342,6 +391,10 @@ public class CardDealTest : MonoBehaviour
         if (allDealtCardsThisRound.Count > 0)
             return true;
 
+        if (TryReadIntProp("roundCardsNumberV1", out int snapshotRound) &&
+            TryReadIntProp("turnRoundNumberV1", out int turnRound) && snapshotRound != turnRound)
+            return false;
+
         if (!PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(RoundCardsSnapshotKey, out object rawSnapshot))
             return false;
 
@@ -393,6 +446,7 @@ public class CardDealTest : MonoBehaviour
 
             RectTransform rect = spawnedCard.GetComponent<RectTransform>();
             rect.anchoredPosition = target.EndPosition;
+            rect.localRotation=Quaternion.Euler(0,0,target.Rotation);
 
             DealtCardView dealtCardView = rect.GetComponent<DealtCardView>();
             if (dealtCardView == null)
@@ -415,6 +469,7 @@ public class CardDealTest : MonoBehaviour
 
         hasStarted = true;
         useConfiguredRoundData = false;
+        HasFinishedDealing = true;
         return true;
     }
 
@@ -447,7 +502,8 @@ public class CardDealTest : MonoBehaviour
             yield break;
         }
 
-        if (cardDatabase.cards == null || cardDatabase.cards.Length == 0)
+        CardSpriteEntry[] multiplayerCards = cardDatabase.GetMultiplayerCards();
+        if (multiplayerCards == null || multiplayerCards.Length == 0)
         {
             Debug.LogError("CardDealTest: CardDatabase nie ma żadnych kart.");
             yield break;
@@ -484,7 +540,7 @@ public class CardDealTest : MonoBehaviour
             yield break;
         }
 
-        if (orderedTargets.Count > cardDatabase.cards.Length)
+        if (orderedTargets.Count > multiplayerCards.Length)
         {
             Debug.LogError("CardDealTest: liczba wszystkich rozdawanych kart jest większa niż liczba kart w CardDatabase.");
             yield break;
@@ -551,6 +607,7 @@ public class CardDealTest : MonoBehaviour
             }
 
             yield return StartCoroutine(AnimateCardTo(cardRect, dealerPos, orderedTargets[i].EndPosition));
+            cardRect.localRotation=Quaternion.Euler(0,0,orderedTargets[i].Rotation);
             ShowFrontForDealIndex(cardRect, shuffledCards, i, orderedTargets[i].StablePlayerId);
             yield return new WaitForSeconds(delayBetweenDeals);
         }
@@ -561,6 +618,7 @@ public class CardDealTest : MonoBehaviour
 
     private void NotifyTurnManagerCardsReady()
     {
+        HasFinishedDealing = true;
         if (turnManager == null)
             return;
 
@@ -587,7 +645,8 @@ public class CardDealTest : MonoBehaviour
             { RoundCardsSnapshotKey, snapshot },
             { RoundStarterKey, runtimeStarterPlayerId },
             { RoundDealerKey, runtimeDealerPlayerId },
-            { RoundSeedKey, sharedRoundSeed }
+            { RoundSeedKey, sharedRoundSeed },
+            { "roundCardsNumberV1", turnManager != null ? turnManager.CurrentRoundNumber : 1 }
         };
 
         PhotonNetwork.CurrentRoom.SetCustomProperties(props);
@@ -693,12 +752,13 @@ public class CardDealTest : MonoBehaviour
     {
         foundEntry = null;
 
-        if (cardDatabase == null || cardDatabase.cards == null)
+        if (cardDatabase == null || cardDatabase.GetMultiplayerCards() == null)
             return false;
 
-        for (int i = 0; i < cardDatabase.cards.Length; i++)
+        CardSpriteEntry[] multiplayerCards = cardDatabase.GetMultiplayerCards();
+        for (int i = 0; i < multiplayerCards.Length; i++)
         {
-            CardSpriteEntry entry = cardDatabase.cards[i];
+            CardSpriteEntry entry = multiplayerCards[i];
             if (entry == null)
                 continue;
 
@@ -845,7 +905,8 @@ public class CardDealTest : MonoBehaviour
 
     private List<CardSpriteEntry> GetShuffledCards()
     {
-        List<CardSpriteEntry> shuffled = new List<CardSpriteEntry>(cardDatabase.cards);
+        List<CardSpriteEntry> shuffled = new List<CardSpriteEntry>(
+            cardDatabase.GetMultiplayerCards());
         System.Random rng = new System.Random(sharedRoundSeed ^ 918273);
 
         for (int i = shuffled.Count - 1; i > 0; i--)
@@ -1028,7 +1089,8 @@ public class CardDealTest : MonoBehaviour
                 orderedTargets.Add(new DealTarget
                 {
                     StablePlayerId = player.StablePlayerId,
-                    EndPosition = endPos
+                    EndPosition = endPos,
+                    Rotation = PhotonNetwork.LocalPlayer!=null && player.StablePlayerId==PhotonNetwork.LocalPlayer.ActorNumber?0:-(cardIndexForPlayer-(player.CardCount-1)*.5f)*12
                 });
 
                 dealtSoFarByPlayerId[player.StablePlayerId] = cardIndexForPlayer + 1;
@@ -1040,10 +1102,10 @@ public class CardDealTest : MonoBehaviour
 
     private Vector2 CalculateCardEndPosition(PlayerDealInfo player, int cardIndexForPlayer)
     {
-        Vector2 lateralDir = new Vector2(-player.InwardDir.y, player.InwardDir.x);
-        float centeredOffset = (cardIndexForPlayer - ((player.CardCount - 1) * 0.5f)) * multiCardSpread;
-
-        return player.CardTargetPos + (player.InwardDir * inwardOffset) + (lateralDir * centeredOffset);
+        if(PhotonNetwork.LocalPlayer!=null && player.StablePlayerId==PhotonNetwork.LocalPlayer.ActorNumber)
+            return player.CardTargetPos+new Vector2(155+cardIndexForPlayer*100,90);
+        float index=cardIndexForPlayer-(player.CardCount-1)*.5f;
+        return player.CardTargetPos+player.InwardDir*Mathf.Max(160,inwardOffset)+new Vector2(index*32,-Mathf.Abs(index)*8);
     }
 
     private int FindFirstReceiverIndexAfterDealer(List<PlayerDealInfo> players, List<int> sharedSeatOrder)
@@ -1176,6 +1238,11 @@ public class CardDealTest : MonoBehaviour
 
     private CardView CreateBackCard(Vector2 anchoredPos)
     {
+        // The room uses the host's selected back so every client sees one deck.
+        if (PhotonNetwork.InRoom && PhotonNetwork.MasterClient != null &&
+            PhotonNetwork.MasterClient.CustomProperties != null &&
+            PhotonNetwork.MasterClient.CustomProperties.TryGetValue(PhotonAvatarSync.CardBackKey,out object selectedBack))
+            backIndex = cardBackDatabase.FindBackIndex(selectedBack?.ToString());
         CardView spawnedCard = Instantiate(cardPrefab, cardsParent);
         spawnedCard.SetBack(cardBackDatabase, backIndex);
 
@@ -1187,6 +1254,7 @@ public class CardDealTest : MonoBehaviour
             return null;
         }
 
+        rect.sizeDelta *= multiplayerCardSizeMultiplier;
         rect.localScale = Vector3.one;
         rect.anchoredPosition = anchoredPos;
 
@@ -1271,9 +1339,10 @@ public class CardDealTest : MonoBehaviour
             if (cardRect == null)
                 continue;
 
-            Vector2 pos = cardRect.anchoredPosition;
-            pos.x = startX + (i * spacing);
-            cardRect.anchoredPosition = pos;
+            foreach(var seat in seatOccupants)
+                if(seat.Value==localPlayerId){cardRect.anchoredPosition=GetLocalPointInParent(cardsParent,seat.Key)+new Vector2(155+i*100,90);break;}
+            cardRect.localRotation=Quaternion.identity;
         }
     }
 }
+

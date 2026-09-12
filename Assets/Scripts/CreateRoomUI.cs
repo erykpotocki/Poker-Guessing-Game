@@ -15,6 +15,10 @@ public class CreateRoomUI : MonoBehaviourPunCallbacks
 
     private void Start()
     {
+        if (nickInput != null && string.IsNullOrWhiteSpace(nickInput.text))
+            nickInput.SetTextWithoutNotify(PlayerProfileService.Data.Profile.Nickname);
+        ConfigureResponsiveLayout();
+        ConfigureMobileInput();
         if (roomCodeText != null)
             roomCodeText.text = "";
 
@@ -26,6 +30,35 @@ public class CreateRoomUI : MonoBehaviourPunCallbacks
         }
 
         ValidateCreateButton();
+    }
+
+    private void ConfigureResponsiveLayout()
+    {
+        SetCentered(createButton != null ? createButton.transform as RectTransform : null, 0.255f, 560f, 104f);
+        if (createButton != null) PokerButtonTheme.ApplyTo(createButton);
+    }
+
+    private void ConfigureMobileInput()
+    {
+        if (nickInput == null)
+            return;
+
+        nickInput.keyboardType = TouchScreenKeyboardType.Default;
+        if(nickInput.GetComponent<VisibleInputCaret>()==null)nickInput.gameObject.AddComponent<VisibleInputCaret>();
+        MobileInputFieldUX mobileUx = GetComponent<MobileInputFieldUX>();
+        if (mobileUx == null)
+            mobileUx = gameObject.AddComponent<MobileInputFieldUX>();
+        mobileUx.Configure(0f, nickInput);
+    }
+
+    private static void SetCentered(RectTransform rect, float anchorY, float width, float height)
+    {
+        if (rect == null) return;
+        rect.anchorMin = rect.anchorMax = new Vector2(0.5f, anchorY);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = new Vector2(width, height);
+        rect.localScale = Vector3.one;
     }
 
     private void Update()
@@ -81,7 +114,7 @@ public class CreateRoomUI : MonoBehaviourPunCallbacks
             MaxPlayers = 6,
             IsVisible = false,
             IsOpen = true,
-            PlayerTtl = 300000,
+            PlayerTtl = 1800000,
             EmptyRoomTtl = 300000
         };
 

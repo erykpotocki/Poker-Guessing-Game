@@ -24,6 +24,18 @@ public class TableSeatSpawner : MonoBehaviour
     private const string AvatarKey = "avatarIndex";
     private const string SeatOrderKey = "seatOrderV1";
     private const string GameSeedKey = "gameSeedV1";
+    private const string DealerAvatarKey = "dealerAvatarV1";
+    private Sprite[] dealerAvatars;
+
+    private void Awake()
+    {
+        dealerAvatars = Resources.LoadAll<Sprite>("DealerAvatars");
+        System.Array.Sort(dealerAvatars, (a, b) => string.CompareOrdinal(a.name, b.name));
+        if (tableCenter == null) return;
+        MultiplayerTableLayout layout = gameObject.AddComponent<MultiplayerTableLayout>();
+        RectTransform presentation = layout.Initialize(tableCenter);
+        if (cardDealTest != null) cardDealTest.SetPresentationParent(presentation);
+    }
 
     private void Start()
     {
@@ -102,13 +114,19 @@ public class TableSeatSpawner : MonoBehaviour
             int sharedIndex = (localIndexInSharedOrder + localSeatIndex) % sharedSeatOrder.Count;
             int actorNumber = sharedSeatOrder[sharedIndex];
 
-            if (!playersByActorNumber.TryGetValue(actorNumber, out Player player))
+            if (playersByActorNumber.TryGetValue(actorNumber, out Player player))
             {
-                Debug.LogWarning("TableSeatSpawner: nie znaleziono gracza dla ActorNumber = " + actorNumber);
+                SpawnPlayerSeat(player, localSeatAngles[localSeatIndex], localSeatIndex);
                 continue;
             }
 
-            SpawnPlayerSeat(player, localSeatAngles[localSeatIndex], localSeatIndex);
+            if (LobbyBotRegistry.TryGetBot(actorNumber, out LobbyBotInfo bot))
+            {
+                SpawnBotSeat(bot, localSeatAngles[localSeatIndex], localSeatIndex);
+                continue;
+            }
+
+            Debug.LogWarning("TableSeatSpawner: nie znaleziono gracza ani bota dla ActorNumber = " + actorNumber);
         }
 
         SpawnDealerSeat(90f);
@@ -139,9 +157,15 @@ public class TableSeatSpawner : MonoBehaviour
             actorNumbers.Add(players[i].ActorNumber);
         }
 
+        List<LobbyBotInfo> bots = LobbyBotRegistry.GetBots();
+        for (int i = 0; i < bots.Count; i++)
+        {
+            actorNumbers.Add(bots[i].ActorNumber);
+        }
+
         actorNumbers.Sort();
 
-        int sharedGameSeed = PhotonNetwork.ServerTimestamp ^ (players.Length * 48611) ^ Guid.NewGuid().GetHashCode();
+        int sharedGameSeed = PhotonNetwork.ServerTimestamp ^ (actorNumbers.Count * 48611) ^ Guid.NewGuid().GetHashCode();
 
         System.Random rng = new System.Random(sharedGameSeed);
 
@@ -160,6 +184,17 @@ public class TableSeatSpawner : MonoBehaviour
             { GameSeedKey, sharedGameSeed }
         };
 
+        if (dealerAvatars.Length > 0)
+        {
+            int previous = PlayerPrefs.GetInt("lastDealerAvatar", -1);
+            int selected = previous < 0 || previous >= dealerAvatars.Length ? UnityEngine.Random.Range(0, dealerAvatars.Length) :
+                (previous + UnityEngine.Random.Range(1, Mathf.Max(2, dealerAvatars.Length))) % dealerAvatars.Length;
+            props[DealerAvatarKey] = selected;
+            PlayerPrefs.SetInt("lastDealerAvatar", selected);
+            PlayerPrefs.Save();
+        }
+
+        // Publish together so every client sees the same dealer before spawning seats.
         PhotonNetwork.CurrentRoom.SetCustomProperties(props);
 
         Debug.Log("TableSeatSpawner: shared seat order = " + string.Join(" -> ", actorNumbers) + " | seed = " + sharedGameSeed);
@@ -273,9 +308,11 @@ public class TableSeatSpawner : MonoBehaviour
             Mathf.Cos(angleRad) * radiusX,
             Mathf.Sin(angleRad) * radiusY
         );
+        pos = MoveLeftEdgeSeatOutward(pos);
 
         GameObject seatGO = Instantiate(seatPrefab, tableCenter.parent);
         seatGO.name = $"Seat_{seatIndex}_{p.ActorNumber}_{p.NickName}";
+        GetComponent<MultiplayerTableLayout>()?.AttachSeat(seatGO.GetComponent<RectTransform>(),angleDeg);
 
         RectTransform seatRT = seatGO.GetComponent<RectTransform>();
         seatRT.anchoredPosition = tableCenter.anchoredPosition + pos;
@@ -299,12 +336,82 @@ public class TableSeatSpawner : MonoBehaviour
             }
 
             view.Set(p.NickName, avatar);
+            view.ApplyFrame(GetStringProperty(p, PhotonAvatarSync.FrameKey));
+            int publicGames = GetIntProperty(p, PhotonAvatarSync.GamesPlayedKey);
+            int publicWins = GetIntProperty(p, PhotonAvatarSync.GamesWonKey);
+            string profileId = GetStringProperty(p, PhotonAvatarSync.ProfileIdKey);
+            Canvas owner = seatGO.GetComponentInParent<Canvas>();
+            view.ConfigureProfileButton(() => PublicPlayerProfileUI.Show(owner, avatar, p.NickName,
+                publicGames, publicWins, profileId,p.ActorNumber));
+            seatGO.AddComponent<PlayerReactions>().Actor=p.ActorNumber;
         }
 
         if (cardDealTest != null)
         {
             cardDealTest.SetSeatOccupant(seatRT, p.ActorNumber);
         }
+    }
+
+    private static int GetIntProperty(Player player, string key)
+    {
+        if (player?.CustomProperties == null || !player.CustomProperties.TryGetValue(key,out object value)) return 0;
+        if (value is int number) return Mathf.Max(0,number);
+        return int.TryParse(value?.ToString(),out int parsed) ? Mathf.Max(0,parsed) : 0;
+    }
+
+    private static string GetStringProperty(Player player, string key)
+    {
+        if (player?.CustomProperties == null || !player.CustomProperties.TryGetValue(key,out object value)) return "";
+        return value?.ToString() ?? "";
+    }
+
+    private void SpawnBotSeat(LobbyBotInfo bot, float angleDeg, int seatIndex)
+    {
+        if (bot == null)
+            return;
+
+        float angleRad = angleDeg * Mathf.Deg2Rad;
+        Vector2 pos = new Vector2(
+            Mathf.Cos(angleRad) * radiusX,
+            Mathf.Sin(angleRad) * radiusY
+        );
+
+        pos = MoveLeftEdgeSeatOutward(pos);
+
+        GameObject seatGO = Instantiate(seatPrefab, tableCenter.parent);
+        seatGO.name = $"Seat_{seatIndex}_{bot.ActorNumber}_{bot.Name}";
+        GetComponent<MultiplayerTableLayout>()?.AttachSeat(seatGO.GetComponent<RectTransform>(),angleDeg);
+
+        RectTransform seatRT = seatGO.GetComponent<RectTransform>();
+        seatRT.anchoredPosition = tableCenter.anchoredPosition + pos;
+
+        SeatUIView view = seatGO.GetComponent<SeatUIView>();
+        if (view != null)
+        {
+            Sprite avatar = null;
+            if (avatarDatabase != null && avatarDatabase.avatars != null &&
+                avatarDatabase.avatars.Length > 0)
+            {
+                int avatarIndex = Mathf.Clamp(bot.AvatarIndex, 0, avatarDatabase.avatars.Length - 1);
+                avatar = avatarDatabase.avatars[avatarIndex];
+            }
+
+            view.Set(bot.Name, avatar);
+            view.ConfigureProfileButton(()=>PublicPlayerProfileUI.Show(view.GetComponentInParent<Canvas>(),avatar,bot.Name,0,0,"bot:"+bot.ActorNumber,bot.ActorNumber));
+        }
+
+        if (cardDealTest != null)
+            cardDealTest.SetSeatOccupant(seatRT, bot.ActorNumber);
+    }
+
+    // Seat rotation is local, therefore any human or bot can occupy the
+    // far-left place. Move it by position only, never by nickname.
+    private Vector2 MoveLeftEdgeSeatOutward(Vector2 position)
+    {
+        // Do not push the edge player outside the usable canvas on narrow phones.
+        if (position.x < -radiusX * 0.55f)
+            position.x += 60f;
+        return position;
     }
 
     private void SpawnDealerSeat(float angleDeg)
@@ -318,6 +425,7 @@ public class TableSeatSpawner : MonoBehaviour
 
         GameObject dealerGO = Instantiate(seatPrefab, tableCenter.parent);
         dealerGO.name = "Seat_Dealer";
+        GetComponent<MultiplayerTableLayout>()?.AttachSeat(dealerGO.GetComponent<RectTransform>(),angleDeg);
 
         RectTransform dealerRT = dealerGO.GetComponent<RectTransform>();
         dealerRT.anchoredPosition = tableCenter.anchoredPosition + pos;
@@ -335,6 +443,13 @@ public class TableSeatSpawner : MonoBehaviour
             }
 
             view.Set("Krupier", dealerAvatar);
+            if (dealerAvatars != null && dealerAvatars.Length > 0)
+            {
+                int index = 0;
+                if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(DealerAvatarKey, out object raw) && raw is int saved) index = saved;
+                view.Set("Krupier", dealerAvatars[Mathf.Abs(index) % dealerAvatars.Length]);
+            }
+            view.ConfigureDealerCaption();
         }
     }
 }

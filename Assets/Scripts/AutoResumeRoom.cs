@@ -17,25 +17,41 @@ public class AutoResumeRoom : MonoBehaviourPunCallbacks
 
     private bool triedAutoResume = false;
     private bool leavingRejectedRoom = false;
-
-    private void Start()
+    private bool connecting;
+    public System.Action<string> Status;
+    private IEnumerator Start()
     {
+        yield return null;
+        if(SceneManager.GetActiveScene().name!="MainMenu"||PlayerPrefs.GetInt(ResumePendingPrefsKey,0)!=1||string.IsNullOrWhiteSpace(PlayerPrefs.GetString(LastRoomCodePrefsKey,"")))yield break;
+        Canvas canvas=GetComponentInParent<Canvas>();if(canvas==null)canvas=FindFirstObjectByType<Canvas>();
+        if(canvas!=null)ProfileTestTools.ShowResumePrompt(canvas,this);
+    }
+
+    // Launch always stays in the portrait menu. A saved match may only be
+    // resumed by an explicit user action, never automatically during startup.
+    public void ResumeSavedRoom()
+    {
+        if(triedAutoResume||connecting)return;
+        connecting=true;
         StartCoroutine(TryAutoResume());
     }
 
     private IEnumerator TryAutoResume()
     {
         if (PlayerPrefs.GetInt(ResumePendingPrefsKey, 0) != 1)
-            yield break;
+        {connecting=false;yield break;}
 
         string roomCode = PlayerPrefs.GetString(LastRoomCodePrefsKey, "");
         if (string.IsNullOrWhiteSpace(roomCode))
         {
             ClearResumePrefs();
+            connecting=false;
             yield break;
         }
 
         float timer = 0f;
+        Status?.Invoke("Łączę z Twoją grą…");
+        FindFirstObjectByType<NetworkBootstrap>()?.ConnectIfNeeded();
         while (!PhotonNetwork.IsConnectedAndReady && timer < waitForPhotonSeconds)
         {
             timer += Time.deltaTime;
@@ -43,17 +59,22 @@ public class AutoResumeRoom : MonoBehaviourPunCallbacks
         }
 
         if (!PhotonNetwork.IsConnectedAndReady)
+        {
+            Status?.Invoke("Brak połączenia. Spróbuj ponownie.");
+            connecting=false;
             yield break;
+        }
 
         if (triedAutoResume)
             yield break;
 
-        triedAutoResume = true;
-        PhotonNetwork.RejoinRoom(roomCode);
+        connecting=false;triedAutoResume = true;
+        if(!PhotonNetwork.RejoinRoom(roomCode)){triedAutoResume=false;Status?.Invoke("Połączenie jeszcze nie jest gotowe. Spróbuj ponownie.");}
     }
 
     public override void OnJoinedRoom()
     {
+        if (!triedAutoResume) return;
         bool gameStarted = false;
         bool gameEnded = false;
 
@@ -73,10 +94,9 @@ public class AutoResumeRoom : MonoBehaviourPunCallbacks
             }
         }
 
-        int playerCount = PhotonNetwork.CurrentRoom != null ? PhotonNetwork.CurrentRoom.PlayerCount : 0;
-
-        if (gameEnded || playerCount <= 1)
+        if (gameEnded)
         {
+            Status?.Invoke("Ta gra już się zakończyła. Możesz zamknąć to okno i rozpocząć nową.");
             ClearResumePrefs();
 
             if (PhotonNetwork.InRoom && !leavingRejectedRoom)
@@ -88,12 +108,30 @@ public class AutoResumeRoom : MonoBehaviourPunCallbacks
             return;
         }
 
-        ClearResumePrefs();
-        SceneManager.LoadScene(gameStarted ? gameSceneName : lobbySceneName);
+        if (gameStarted)
+        {
+            MultiplayerLoadingTransition.Begin();
+            StartCoroutine(EnterStartedGame());
+        }
+        else SceneManager.LoadScene(lobbySceneName);
+    }
+
+    private IEnumerator EnterStartedGame()
+    {
+        yield return null;
+        if (!PhotonNetwork.InRoom)
+        {
+            MultiplayerLoadingTransition.Finish();
+            HotSeatOrientationLock.LockPortrait();
+            yield break;
+        }
+        if (PhotonNetwork.IsMessageQueueRunning)
+            PhotonNetwork.LoadLevel(gameSceneName);
     }
 
     public override void OnLeftRoom()
     {
+        if (!triedAutoResume) return;
         leavingRejectedRoom = false;
 
         if (SceneManager.GetActiveScene().name != "MainMenu")
@@ -102,8 +140,20 @@ public class AutoResumeRoom : MonoBehaviourPunCallbacks
 
     public override void OnJoinRoomFailed(short returnCode, string message)
     {
-        ClearResumePrefs();
+        if (!triedAutoResume) return;
+        triedAutoResume=false;
+        connecting=false;
+        Status?.Invoke("Nie można wrócić. Pokój mógł wygasnąć lub mecz się zakończył.");
         Debug.LogWarning($"AutoResumeRoom: Rejoin failed: {message} ({returnCode})");
+    }
+
+    public override void OnDisconnected(DisconnectCause cause)
+    {
+        if(!connecting&&!triedAutoResume)return;
+        StopAllCoroutines();connecting=false;triedAutoResume=false;
+        MultiplayerLoadingTransition.Finish();
+        HotSeatOrientationLock.LockPortrait();
+        Status?.Invoke("Połączenie zostało przerwane. Spróbuj ponownie.");
     }
 
     private void ClearResumePrefs()

@@ -18,19 +18,32 @@ public class GameLoadSync : MonoBehaviourPunCallbacks
     private bool roomReady = false;
     private bool loadingFinished = false;
     private bool loadHandshakeStarted = false;
+    private float loadingStartedAt;
+    private float LoadingDuration => Mathf.Max(5f,minimumLoadingTime)+7f;
 
     private void Start()
     {
-        roomReady = false;
-        loadingFinished = false;
-        minimumTimePassed = false;
-        loadHandshakeStarted = false;
-
+        loadingStartedAt=Time.unscaledTime;
+        // OnJoinedRoom may run between OnEnable and Start. Do not reset a
+        // handshake already begun by that callback.
+        loadingUI = MultiplayerLoadingTransition.UseForGame(loadingUI);
         if (loadingUI != null)
             loadingUI.ShowLoading("Ładowanie graczy...");
 
         StartCoroutine(MinimumLoadingTimer());
         StartCoroutine(WaitForRoomAndStartHandshake());
+    }
+
+    private void Update()
+    {
+        if (loadingFinished || loadingUI == null) return;
+        Player[] players = PhotonNetwork.PlayerList;
+        int loaded = 0;
+        foreach (Player player in players)
+            if (player.CustomProperties.TryGetValue(PlayerLoadedKey, out object value) && value is bool ready && ready) loaded++;
+        float fraction = players.Length > 0 ? (float)loaded / players.Length : 0f;
+        float timedProgress=Mathf.Clamp01((Time.unscaledTime-loadingStartedAt)/LoadingDuration);
+        loadingUI.SetProgress(.9f*timedProgress+.09f*fraction, minimumTimePassed && fraction<1f ? "Oczekiwanie na graczy…" : "Przygotowywanie stołu…");
     }
 
     private IEnumerator WaitForRoomAndStartHandshake()
@@ -39,7 +52,7 @@ public class GameLoadSync : MonoBehaviourPunCallbacks
 
         while (!PhotonNetwork.InRoom && timer < waitForRoomTimeout)
         {
-            timer += Time.deltaTime;
+            timer += Time.unscaledDeltaTime;
             yield return null;
         }
 
@@ -86,6 +99,9 @@ public class GameLoadSync : MonoBehaviourPunCallbacks
     private IEnumerator FinishLoadHandshakeNextFrame()
     {
         yield return null;
+        // Acknowledge only after our presentation time, so everyone waits
+        // before the first deal instead of playing beneath another loader.
+        while(!minimumTimePassed && PhotonNetwork.InRoom)yield return null;
 
         if (!PhotonNetwork.InRoom)
             yield break;
@@ -102,7 +118,7 @@ public class GameLoadSync : MonoBehaviourPunCallbacks
 
     private IEnumerator MinimumLoadingTimer()
     {
-        yield return new WaitForSeconds(minimumLoadingTime);
+        yield return new WaitForSecondsRealtime(LoadingDuration);
         minimumTimePassed = true;
         TryHideLoading();
     }
@@ -114,9 +130,8 @@ public class GameLoadSync : MonoBehaviourPunCallbacks
 
     public override void OnRoomPropertiesUpdate(Hashtable changedProps)
     {
-        if (changedProps.ContainsKey(RoomCanStartKey))
+        if (changedProps != null && changedProps.ContainsKey(RoomCanStartKey))
         {
-            roomReady = (bool)changedProps[RoomCanStartKey];
             TryHideLoading();
         }
     }
@@ -160,6 +175,14 @@ public class GameLoadSync : MonoBehaviourPunCallbacks
 
     private void TryHideLoading()
     {
+        if (loadingFinished || !loadHandshakeStarted || !PhotonNetwork.InRoom)
+            return;
+
+        // A late joiner receives existing room properties, not necessarily a new
+        // gameCanStart notification. Read current state rather than waiting for
+        // an event that may already have happened before this scene was loaded.
+        roomReady = PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(
+            RoomCanStartKey, out object readyValue) && readyValue is bool ready && ready;
         if (!minimumTimePassed || !roomReady || loadingFinished)
             return;
 
@@ -167,6 +190,7 @@ public class GameLoadSync : MonoBehaviourPunCallbacks
 
         if (loadingUI != null)
             loadingUI.HideLoading();
+        MultiplayerLoadingTransition.Finish();
 
         StartCoroutine(StartDealAfterLoading());
     }

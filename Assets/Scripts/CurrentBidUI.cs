@@ -26,6 +26,29 @@ public class CurrentBidUI : MonoBehaviour
     private bool isShowingCheck = false;
     private float dotsTimer = 0f;
     private int currentDots = 0;
+    private RectTransform tableAnchor;
+
+    private void LateUpdate()
+    {
+        if (currentBidText == null) return;
+        if (tableAnchor == null)
+        {
+            Canvas canvas = currentBidText.GetComponentInParent<Canvas>();
+            if (canvas != null) tableAnchor = canvas.rootCanvas.transform.Find("TablePresentation/Table") as RectTransform;
+        }
+        if (tableAnchor == null) return;
+        RectTransform rect = currentBidText.rectTransform;
+        rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.position = tableAnchor.TransformPoint(tableAnchor.rect.center);
+        rect.sizeDelta = new Vector2(800f, 150f);
+        currentBidText.alignment = TextAlignmentOptions.Center;
+        currentBidText.color = new Color(1f, 0.94f, 0.76f);
+        currentBidText.enableAutoSizing = true;
+        currentBidText.fontSizeMin = 30f;
+        currentBidText.fontSizeMax = 44f;
+        currentBidText.margin = new Vector4(16f, 8f, 16f, 8f);
+    }
 
     private void OnEnable()
     {
@@ -181,3 +204,4 @@ public class CurrentBidUI : MonoBehaviour
         return openTags + content + closeTags;
     }
 }
+

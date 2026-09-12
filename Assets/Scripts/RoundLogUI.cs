@@ -1,405 +1,124 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
+using System.Linq;
+using ExitGames.Client.Photon;
+using Photon.Pun;
+using Photon.Realtime;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class RoundLogUI : MonoBehaviour
+public class RoundLogUI : MonoBehaviour, IOnEventCallback, IBeginDragHandler, IDragHandler, IEndDragHandler
 {
-    [Header("Refs")]
-    [SerializeField] private ScrollRect scrollRect;
-    [SerializeField] private RectTransform viewportRoot;
-    [SerializeField] private RectTransform contentRoot;
-    [SerializeField] private TMP_Text logText;
-
-    [Header("Text")]
-    [SerializeField, Min(1f)] private float logFontSize = 24f;
-
-    [Header("Scroll")]
-    [SerializeField, Range(0f, 0.25f)] private float autoFollowThreshold = 0.06f;
-    [SerializeField] private bool lockHorizontalScrolling = true;
-    [SerializeField] private int forceBottomFrames = 3;
-
-    [Header("Layout")]
-    [SerializeField] private float topPadding = 8f;
-    [SerializeField] private float bottomPadding = 8f;
-    [SerializeField] private float horizontalPadding = 8f;
-
-    [Header("Colors")]
-    [SerializeField] private Color checkActionColor = new Color(1f, 0.75f, 0.2f, 1f);
-
-    private readonly List<string> lines = new List<string>();
-
-    private bool pendingRefresh = false;
-    private bool forceScrollOnRefresh = false;
-    private Coroutine forceBottomCoroutine;
-
+    private const byte ChatEvent=84;
+    private readonly List<(string text,bool human)> messages=new();
+    private RectTransform root,canvasRoot,viewport,content,header,inputRect;
+    private TMP_Text text,title;
+    private TMP_InputField input;
+    private ScrollRect scroll;
+    private CanvasGroup group;
+    private bool collapsed,editing,resizing;
+    private Vector2 dragStart,positionStart,sizeStart;
+    private float lastSent=-10;
+    private readonly Dictionary<int,float> incoming=new();
     private void Awake()
     {
-        ResolveRefs();
-        ConfigureStaticSettings();
-        QueueRefresh(true);
+        var canvas=GetComponentInParent<Canvas>().rootCanvas;canvasRoot=(RectTransform)canvas.transform;
+        foreach(Transform child in transform){child.gameObject.SetActive(false);Destroy(child.gameObject);}
+
+        root=(RectTransform)transform;root.SetParent(canvasRoot,false);root.localScale=Vector3.one;
+        root.anchorMin=root.anchorMax=root.pivot=new Vector2(0,1);
+        var background=GetComponent<Image>();if(background==null)background=gameObject.AddComponent<Image>();background.sprite=null;background.color=new Color(.015f,.02f,.02f,.94f);
+        group=GetComponent<CanvasGroup>();if(group==null)group=gameObject.AddComponent<CanvasGroup>();
+        header=ShopUI.Rect("ChatHeader",root,0,0,400,40);
+        title=ShopUI.Text(header,"CZAT",8,0,230,40,22);title.alignment=TextAlignmentOptions.Left;
+        var collapse=ShopUI.Button(header,"−",0,0,52,38,()=>{collapsed=!collapsed;Refresh();});collapse.name="Collapse";
+        viewport=ShopUI.Rect("Viewport",root,8,44,384,100);viewport.gameObject.AddComponent<Image>().color=Color.clear;viewport.gameObject.AddComponent<RectMask2D>();
+        content=ShopUI.Rect("Content",viewport,0,0,384,100);text=ShopUI.Text(content,"",0,0,384,100,23);text.alignment=TextAlignmentOptions.TopLeft;text.margin=Vector4.zero;text.textWrappingMode=TextWrappingModes.Normal;
+        scroll=viewport.gameObject.AddComponent<ScrollRect>();scroll.viewport=viewport;scroll.content=content;scroll.horizontal=false;scroll.movementType=ScrollRect.MovementType.Clamped;
+        inputRect=ShopUI.Rect("MessageInput",root,8,150,320,40);inputRect.gameObject.AddComponent<Image>().color=new Color(.12f,.14f,.13f);
+        input=inputRect.gameObject.AddComponent<TMP_InputField>();input.characterLimit=180;input.lineType=TMP_InputField.LineType.SingleLine;input.richText=false;
+        var label=ShopUI.Text(inputRect,"",8,2,300,36,22);label.alignment=TextAlignmentOptions.Left;input.textComponent=label;input.textViewport=inputRect;
+        input.onSubmit.AddListener(_=>Send());ShopUI.Button(root,"➤",340,150,52,40,Send).name="Send";
+        Refresh();
     }
-
-    private void OnEnable()
+    private void OnEnable()=>PhotonNetwork.AddCallbackTarget(this);
+    private void OnDisable()=>PhotonNetwork.RemoveCallbackTarget(this);
+    private static string Escape(string s)=>(s??"").Replace("<","‹").Replace(">","›");
+    public void ClearLog(){messages.Clear();Refresh();}
+    public void AddSystemMessage(string value){if(!string.IsNullOrWhiteSpace(value))Add(value,false);}
+    public void AddRoundHeader(int round)=>Add("<color=#FFD568>Runda "+round+"</color>",false);
+    public void AddPlayerRaise(string player,string rank)=>Add(Escape(player)+": wybiera "+Escape(rank),false);
+    public void AddPlayerCheck(string player)=>Add(Escape(player)+": <color=#FFD568>SPRAWDZAM</color>",false);
+    public void AddPlayerLeftGame(string player)=>Add(Escape(player)+" wyszedł z gry",false);
+    public void AddPlayerRejoinedGame(string player)=>Add(Escape(player)+" wrócił do gry",false);
+    private void Add(string value,bool human)
     {
-        ResolveRefs();
-        ConfigureStaticSettings();
-        QueueRefresh(true);
+        messages.Add((value,human));if(messages.Count>250)messages.RemoveAt(0);Refresh();
     }
-
-    private void LateUpdate()
+    private void Send()
     {
-        if (!pendingRefresh)
-            return;
-
-        pendingRefresh = false;
-        RefreshVisuals();
+        string value=input.text.Trim();if(value.Length==0||!PhotonNetwork.InRoom||Time.unscaledTime-lastSent<1)return;
+        lastSent=Time.unscaledTime;input.SetTextWithoutNotify("");
+        PhotonNetwork.RaiseEvent(ChatEvent,value,new RaiseEventOptions{Receivers=ReceiverGroup.All},SendOptions.SendReliable);
     }
-
-    public void ClearLog()
+    public void OnEvent(EventData e)
     {
-        lines.Clear();
-        QueueRefresh(true);
+        if(e.Code!=ChatEvent||!(e.CustomData is string value)||value.Length>180)return;
+        var player=PhotonNetwork.CurrentRoom?.GetPlayer(e.Sender);if(player==null)return;
+        if(incoming.TryGetValue(e.Sender,out float previous)&&Time.unscaledTime-previous<.8f)return;
+        incoming[e.Sender]=Time.unscaledTime;Add("<color=#9DE1FF>"+Escape(player.NickName)+":</color> "+Escape(value),true);
     }
-
-    public void AddSystemMessage(string text)
+    private void Refresh()
     {
-        if (string.IsNullOrWhiteSpace(text))
-            return;
-
-        string trimmed = text.Trim();
-        trimmed = NormalizePlayerNamesForLog(trimmed);
-
-        if (trimmed.Equals("Start", StringComparison.OrdinalIgnoreCase))
-        {
-            AppendLine(WrapWithColor("<b>Start</b>", checkActionColor), true);
-            return;
-        }
-
-        if (IsEliminationMessage(trimmed))
-        {
-            AppendLine(WrapWithColor(trimmed, checkActionColor), false);
-            return;
-        }
-
-        AppendLine(trimmed, false);
+        if(text==null)return;int filter=PlayerPrefs.GetInt("chat.filter",0);
+        text.text=string.Join("\n",messages.Where(m=>filter==0||(filter==1?!m.human:m.human)).Select(m=>m.text));Layout();
+        Canvas.ForceUpdateCanvases();scroll.StopMovement();scroll.verticalNormalizedPosition=0;
     }
-
-    public void AddRoundHeader(int roundNumber)
+    private void LateUpdate()=>Layout();
+    private void Layout()
     {
-        if (lines.Count > 0)
-        {
-            lines.Add(string.Empty);
-        }
-
-        string header = "<b>Runda " + roundNumber + "</b>";
-        AppendLine(WrapWithColor(header, checkActionColor), true);
+        if(root==null||canvasRoot==null)return;
+        float sx=canvasRoot.rect.width/Mathf.Max(1,Screen.width),sy=canvasRoot.rect.height/Mathf.Max(1,Screen.height);
+        float left=Screen.safeArea.xMin*sx+8,right=canvasRoot.rect.width-MultiplayerPanelLayout.PanelWidth(canvasRoot.rect.width)-18;
+        float top=(Screen.height-Screen.safeArea.yMax)*sy+100;
+        float available=Mathf.Max(250,right-left),w=Mathf.Clamp(PlayerPrefs.GetFloat("chat.width",440),250,Mathf.Min(680,available));
+        float maxHeight=Mathf.Clamp(PlayerPrefs.GetFloat("chat.height",200),150,Mathf.Min(280,canvasRoot.rect.height*.3f));
+        float preferred=text.GetPreferredValues(text.text,w-16,0).y+8;
+        float bodyHeight=Mathf.Clamp(preferred,28,maxHeight-90),h=collapsed?40:bodyHeight+90;
+        root.sizeDelta=new Vector2(w,h);root.anchoredPosition=new Vector2(Mathf.Clamp(PlayerPrefs.GetFloat("chat.x",right-w),left,Mathf.Max(left,right-w)),-Mathf.Clamp(PlayerPrefs.GetFloat("chat.y",top),top,top+Mathf.Max(0,280-h)));
+        header.sizeDelta=new Vector2(w,40);((RectTransform)header.Find("Collapse")).anchoredPosition=new Vector2(w-54,0);
+        title.text=editing?"EDYCJA: przesuń / rozciągnij":"CZAT";
+        viewport.gameObject.SetActive(!collapsed);inputRect.gameObject.SetActive(!collapsed);root.Find("Send").gameObject.SetActive(!collapsed);
+        viewport.sizeDelta=new Vector2(w-16,bodyHeight);content.sizeDelta=new Vector2(w-16,Mathf.Max(preferred,bodyHeight));text.rectTransform.sizeDelta=content.sizeDelta;
+        inputRect.anchoredPosition=new Vector2(8,-(bodyHeight+48));inputRect.sizeDelta=new Vector2(w-76,36);input.textComponent.rectTransform.sizeDelta=new Vector2(w-92,34);
+        ((RectTransform)root.Find("Send")).anchoredPosition=new Vector2(w-62,-(bodyHeight+48));
+        bool visible=PlayerPrefs.GetInt("chat.visible",1)!=0;group.alpha=visible?1:0;group.blocksRaycasts=visible;
     }
-
-    public void AddPlayerRaise(string playerName, string selectedRankText)
+    public void OnBeginDrag(PointerEventData e)
     {
-        string safePlayerName = EscapeRichText(playerName).ToUpperInvariant();
-        string safeRankText = EscapeRichText(selectedRankText);
-
-        AppendLine("<b>" + safePlayerName + "</b>: wybiera " + safeRankText, false);
+        if(!editing)return;RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRoot,e.position,e.pressEventCamera,out dragStart);
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(root,e.position,e.pressEventCamera,out var p);
+        resizing=p.x>root.rect.width-60&&p.y< -root.rect.height+60;positionStart=root.anchoredPosition;sizeStart=root.sizeDelta;
     }
-
-    public void AddPlayerCheck(string playerName)
+    public void OnDrag(PointerEventData e)
     {
-        string safePlayerName = EscapeRichText(playerName).ToUpperInvariant();
-        string coloredCheckText = WrapWithColor("SPRAWDZAM", checkActionColor);
-
-        AppendLine("<b>" + safePlayerName + "</b>: wybiera " + coloredCheckText, false);
+        if(!editing)return;RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRoot,e.position,e.pressEventCamera,out var p);var delta=p-dragStart;
+        if(resizing){PlayerPrefs.SetFloat("chat.width",sizeStart.x+delta.x);PlayerPrefs.SetFloat("chat.height",sizeStart.y-delta.y);}
+        else{PlayerPrefs.SetFloat("chat.x",positionStart.x+delta.x);PlayerPrefs.SetFloat("chat.y",-positionStart.y-delta.y);}
+        Layout();
     }
-
-    public void AddPlayerLeftGame(string playerName)
+    public void OnEndDrag(PointerEventData e){if(editing)PlayerPrefs.Save();}
+    public static void ShowOptions(Canvas canvas)
     {
-        string safePlayerName = EscapeRichText(playerName).ToUpperInvariant();
-        AppendLine("<b>" + safePlayerName + "</b> wyszedł z gry", false);
-    }
-
-    public void AddPlayerRejoinedGame(string playerName)
-    {
-        string safePlayerName = EscapeRichText(playerName).ToUpperInvariant();
-        AppendLine("<b>" + safePlayerName + "</b> wrócił do gry", false);
-    }
-
-    private void AppendLine(string line, bool forceScroll)
-    {
-        bool shouldFollow = forceScroll || IsNearBottom() || lines.Count == 0;
-        lines.Add(line);
-        QueueRefresh(shouldFollow);
-    }
-
-    private void QueueRefresh(bool forceScroll)
-    {
-        pendingRefresh = true;
-
-        if (forceScroll)
-            forceScrollOnRefresh = true;
-    }
-
-    private void RefreshVisuals()
-    {
-        ResolveRefs();
-        ConfigureStaticSettings();
-
-        if (scrollRect == null || contentRoot == null || logText == null)
-            return;
-
-        logText.text = string.Join("\n", lines);
-        logText.ForceMeshUpdate();
-
-        Canvas.ForceUpdateCanvases();
-        RebuildBottomLayout();
-
-        if (lockHorizontalScrolling)
-            ForceHorizontalLocked();
-
-        if (forceScrollOnRefresh)
-        {
-            if (forceBottomCoroutine != null)
-                StopCoroutine(forceBottomCoroutine);
-
-            forceBottomCoroutine = StartCoroutine(ForceBottomRoutine());
-        }
-
-        forceScrollOnRefresh = false;
-    }
-
-    private void RebuildBottomLayout()
-    {
-        if (scrollRect == null || contentRoot == null || logText == null)
-            return;
-
-        RectTransform logRect = logText.rectTransform;
-
-        ConfigureBottomStretch(contentRoot);
-        ConfigureBottomStretch(logRect);
-
-        float viewportHeight = GetViewportHeight();
-        float availableWidth = GetAvailableTextWidth();
-
-        Vector2 preferred = logText.GetPreferredValues(logText.text, availableWidth, 0f);
-        float textHeight = Mathf.Ceil(preferred.y);
-
-        float contentHeight = Mathf.Max(viewportHeight, textHeight + topPadding + bottomPadding);
-
-        contentRoot.offsetMin = new Vector2(0f, 0f);
-        contentRoot.offsetMax = new Vector2(0f, contentHeight);
-
-        logRect.offsetMin = new Vector2(horizontalPadding, bottomPadding);
-        logRect.offsetMax = new Vector2(-horizontalPadding, bottomPadding + textHeight);
-
-        LayoutRebuilder.ForceRebuildLayoutImmediate(logRect);
-        LayoutRebuilder.ForceRebuildLayoutImmediate(contentRoot);
-        Canvas.ForceUpdateCanvases();
-    }
-
-    private IEnumerator ForceBottomRoutine()
-    {
-        int frames = Mathf.Max(1, forceBottomFrames);
-
-        for (int i = 0; i < frames; i++)
-        {
-            yield return null;
-
-            ResolveRefs();
-            ConfigureStaticSettings();
-
-            Canvas.ForceUpdateCanvases();
-            RebuildBottomLayout();
-
-            if (scrollRect != null)
-            {
-                scrollRect.StopMovement();
-                scrollRect.verticalNormalizedPosition = 0f;
-            }
-
-            if (lockHorizontalScrolling)
-                ForceHorizontalLocked();
-        }
-
-        forceBottomCoroutine = null;
-    }
-
-    private void ForceHorizontalLocked()
-    {
-        if (scrollRect != null)
-        {
-            scrollRect.horizontal = false;
-            scrollRect.horizontalNormalizedPosition = 0f;
-        }
-
-        if (contentRoot != null)
-        {
-            Vector2 anchored = contentRoot.anchoredPosition;
-            anchored.x = 0f;
-            contentRoot.anchoredPosition = anchored;
-        }
-    }
-
-    private bool IsNearBottom()
-    {
-        if (scrollRect == null)
-            return true;
-
-        return scrollRect.verticalNormalizedPosition <= autoFollowThreshold;
-    }
-
-    private float GetViewportHeight()
-    {
-        if (viewportRoot != null)
-            return viewportRoot.rect.height;
-
-        if (scrollRect != null && scrollRect.viewport != null)
-            return scrollRect.viewport.rect.height;
-
-        if (scrollRect != null)
-            return ((RectTransform)scrollRect.transform).rect.height;
-
-        return 0f;
-    }
-
-    private float GetAvailableTextWidth()
-    {
-        float width = 300f;
-
-        if (viewportRoot != null)
-            width = viewportRoot.rect.width;
-        else if (scrollRect != null && scrollRect.viewport != null)
-            width = scrollRect.viewport.rect.width;
-        else if (scrollRect != null)
-            width = ((RectTransform)scrollRect.transform).rect.width;
-
-        width -= horizontalPadding * 2f;
-        return Mathf.Max(50f, width);
-    }
-
-    private void ResolveRefs()
-    {
-        if (scrollRect == null)
-            scrollRect = GetComponentInChildren<ScrollRect>(true);
-
-        if (viewportRoot == null && scrollRect != null)
-            viewportRoot = scrollRect.viewport != null ? scrollRect.viewport : scrollRect.GetComponent<RectTransform>();
-
-        if (contentRoot == null && scrollRect != null)
-            contentRoot = scrollRect.content;
-
-        if (logText == null && contentRoot != null)
-            logText = contentRoot.GetComponentInChildren<TMP_Text>(true);
-    }
-
-    private void ConfigureStaticSettings()
-    {
-        if (scrollRect != null)
-        {
-            scrollRect.vertical = true;
-            scrollRect.horizontal = !lockHorizontalScrolling ? scrollRect.horizontal : false;
-            scrollRect.movementType = ScrollRect.MovementType.Clamped;
-            scrollRect.inertia = true;
-        }
-
-        if (logText != null)
-        {
-            logText.fontSize = logFontSize;
-            logText.richText = true;
-            logText.textWrappingMode = TextWrappingModes.Normal;
-            logText.overflowMode = TextOverflowModes.Overflow;
-            logText.alignment = TextAlignmentOptions.BottomLeft;
-        }
-    }
-
-    private void ConfigureBottomStretch(RectTransform rect)
-    {
-        if (rect == null)
-            return;
-
-        rect.anchorMin = new Vector2(0f, 0f);
-        rect.anchorMax = new Vector2(1f, 0f);
-        rect.pivot = new Vector2(0.5f, 0f);
-    }
-
-    private bool IsEliminationMessage(string text)
-    {
-        return text.IndexOf("odpada z gry", StringComparison.OrdinalIgnoreCase) >= 0;
-    }
-
-    private string NormalizePlayerNamesForLog(string text)
-    {
-        if (string.IsNullOrEmpty(text))
-            return string.Empty;
-
-        string result = text;
-
-        result = UppercaseBoldTagContents(result);
-        result = BoldAndUppercaseLeadingNameBeforeKeyword(result, " przegrywa");
-        result = BoldAndUppercaseLeadingNameBeforeKeyword(result, " ma teraz ");
-        result = BoldAndUppercaseNameAfterPrefix(result, "Koniec gry. Wygrywa: ");
-
-        return result;
-    }
-
-    private string UppercaseBoldTagContents(string text)
-    {
-        return Regex.Replace(
-            text,
-            "<b>(.*?)</b>",
-            match => "<b>" + match.Groups[1].Value.ToUpperInvariant() + "</b>",
-            RegexOptions.IgnoreCase | RegexOptions.Singleline
-        );
-    }
-
-    private string BoldAndUppercaseLeadingNameBeforeKeyword(string text, string keyword)
-    {
-        int keywordIndex = text.IndexOf(keyword, StringComparison.OrdinalIgnoreCase);
-        if (keywordIndex <= 0)
-            return text;
-
-        string candidate = text.Substring(0, keywordIndex);
-
-        if (candidate.Contains("<") || candidate.Contains(">"))
-            return text;
-
-        return "<b>" + EscapeRichText(candidate).ToUpperInvariant() + "</b>" + text.Substring(keywordIndex);
-    }
-
-    private string BoldAndUppercaseNameAfterPrefix(string text, string prefix)
-    {
-        int prefixIndex = text.IndexOf(prefix, StringComparison.OrdinalIgnoreCase);
-        if (prefixIndex < 0)
-            return text;
-
-        int nameStartIndex = prefixIndex + prefix.Length;
-        if (nameStartIndex >= text.Length)
-            return text;
-
-        string namePart = text.Substring(nameStartIndex);
-
-        if (namePart.Contains("<") || namePart.Contains(">"))
-            return text;
-
-        return text.Substring(0, nameStartIndex) + "<b>" + EscapeRichText(namePart).ToUpperInvariant() + "</b>";
-    }
-
-    private string EscapeRichText(string value)
-    {
-        if (string.IsNullOrEmpty(value))
-            return string.Empty;
-
-        return value
-            .Replace("&", "&amp;")
-            .Replace("<", "&lt;")
-            .Replace(">", "&gt;");
-    }
-
-    private string WrapWithColor(string text, Color color)
-    {
-        string hex = ColorUtility.ToHtmlStringRGBA(color);
-        return "<color=#" + hex + ">" + text + "</color>";
+        var chat=FindFirstObjectByType<RoundLogUI>();if(chat==null)return;
+        var r=ShopUI.Overlay(canvas,"ChatSettings");float w=r.rect.width;
+        ShopUI.Text(r,"USTAWIENIA CZATU",20,20,w-40,65,38);
+        ShopUI.Button(r,PlayerPrefs.GetInt("chat.visible",1)==1?"UKRYJ CZAT":"POKAŻ CZAT",20,100,w-40,70,()=>{PlayerPrefs.SetInt("chat.visible",1-PlayerPrefs.GetInt("chat.visible",1));Destroy(r.gameObject);chat.Refresh();});
+        string[] names={"Wszystkie wiadomości","Tylko system","Tylko gracze"};
+        for(int i=0;i<3;i++){int n=i;ShopUI.Button(r,names[i],20,190+i*80,w-40,70,()=>{PlayerPrefs.SetInt("chat.filter",n);chat.Refresh();Destroy(r.gameObject);});}
+        ShopUI.Button(r,chat.editing?"ZAKOŃCZ EDYCJĘ":"ZMIEŃ POZYCJĘ I ROZMIAR",20,450,w-40,70,()=>{chat.editing=!chat.editing;Destroy(r.gameObject);});
+        ShopUI.Button(r,"ZAMKNIJ",20,540,w-40,70,()=>Destroy(r.gameObject));
     }
 }
