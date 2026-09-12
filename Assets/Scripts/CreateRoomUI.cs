@@ -44,6 +44,7 @@ public class CreateRoomUI : MonoBehaviourPunCallbacks
             return;
 
         nickInput.keyboardType = TouchScreenKeyboardType.Default;
+        if(nickInput.GetComponent<VisibleInputCaret>()==null)nickInput.gameObject.AddComponent<VisibleInputCaret>();
         MobileInputFieldUX mobileUx = GetComponent<MobileInputFieldUX>();
         if (mobileUx == null)
             mobileUx = gameObject.AddComponent<MobileInputFieldUX>();

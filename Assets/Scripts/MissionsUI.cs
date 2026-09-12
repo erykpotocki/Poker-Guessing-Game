@@ -17,7 +17,7 @@ public sealed class MissionsUI : MonoBehaviour
     private static bool Ready(int i)
     {
         var d=PlayerProfileService.Data;
-        return i==0?d.Statistics.GamesPlayed>0:i==1?d.RulesRead:i==2?d.Statistics.GamesWon>0:d.Statistics.RoundsPlayed>=10;
+        return ProgressionRules.IntroMissionReady(d,i);
     }
     private void Build()
     {
@@ -45,11 +45,7 @@ public sealed class MissionsUI : MonoBehaviour
     }
     private void Claim(int i)
     {
-        var d=PlayerProfileService.Data;if(!Ready(i)||d.ClaimedIntroMissions.Contains(ids[i]))return;
-        d.ClaimedIntroMissions.Add(ids[i]);
-        if(i==0)ProgressionRules.Unlock(d,"frame","classic_wood","Ramka za pierwszą grę","mission");
-        else if(i==1)d.Wallet.RewardCurrency+=10;
-        else d.Wallet.Coins+=i==2?100:50;
+        if(!ProgressionRules.ClaimIntroMission(PlayerProfileService.Data,i))return;
         PlayerProfileService.Save();Build();
         if(i==0)UnlockPresentationUI.ShowPending(GetComponent<Canvas>());
     }

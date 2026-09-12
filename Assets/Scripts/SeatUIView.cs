@@ -199,6 +199,7 @@ public class SeatUIView : MonoBehaviour
     public void ConfigureDealerCaption()
     {
         if (nickText == null || avatarImage == null) return;
+        nickText.gameObject.SetActive(false);
         avatarImage.rectTransform.sizeDelta=Vector2.one*136;
         RectTransform caption = nickText.rectTransform;
         caption.anchorMin = caption.anchorMax = new Vector2(0.5f, 0.5f);
@@ -408,5 +409,3 @@ public class SeatUIView : MonoBehaviour
             new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), 100f);
     }
 }
-
-

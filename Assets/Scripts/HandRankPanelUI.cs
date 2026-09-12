@@ -21,11 +21,12 @@ public class HandRankPanelUI : MonoBehaviour
     [SerializeField] private Color raiseButtonColor = new Color32(255, 209, 51, 255);
 
     private static readonly string[] rankOrder = { "9", "10", "J", "Q", "K", "A" };
-    private int searchRound=-1;
+    private int searchRound=-1,searchActor=-1;
     private void Update()
     {
         if(turnManager==null)return;
-        if(searchRound==turnManager.CurrentRoundNumber)return;
+        if(searchRound==turnManager.CurrentRoundNumber&&searchActor==turnManager.CurrentPlayerActorNumber)return;
+        searchActor=turnManager.CurrentPlayerActorNumber;
         searchRound=turnManager.CurrentRoundNumber;
         if(handSearch!=null&&!string.IsNullOrEmpty(handSearch.text)){handSearch.SetTextWithoutNotify("");ClearSelectedRank();SetOnlyOneListActive(categoryList);}
     }
@@ -1118,6 +1119,7 @@ public class HandRankPanelUI : MonoBehaviour
     private GameObject GetChildObject(Transform parent, string childName)
     {
         Transform child = FindDirectChild(parent, childName);
+        if(child==null&&parent!=null)foreach(Transform candidate in parent.GetComponentsInChildren<Transform>(true))if(candidate.name==childName){child=candidate;break;}
         return child != null ? child.gameObject : null;
     }
 
@@ -1148,4 +1150,3 @@ public class HandRankPanelUI : MonoBehaviour
         return null;
     }
 }
-

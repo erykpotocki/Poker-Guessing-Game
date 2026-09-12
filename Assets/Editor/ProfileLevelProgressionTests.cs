@@ -4,6 +4,28 @@ using PokerProfile;
 
 public class ProfileLevelProgressionTests
 {
+    [Test]
+    public void CombinedPrestigePurchaseNeverPartiallyCharges()
+    {
+        var save=new PlayerSave();save.Wallet.Coins=10000;save.Wallet.RewardCurrency=999;
+        Assert.That(CosmeticCatalog.TryBuy(save,"back","15prestige",false),Is.False);
+        Assert.That(save.Wallet.Coins,Is.EqualTo(10000));
+        Assert.That(save.Wallet.RewardCurrency,Is.EqualTo(999));
+        save.Wallet.RewardCurrency=1000;
+        Assert.That(CosmeticCatalog.TryBuy(save,"back","15prestige",true),Is.True);
+        Assert.That(save.Wallet.Coins,Is.Zero);Assert.That(save.Wallet.RewardCurrency,Is.Zero);
+        Assert.That(CosmeticCatalog.TryBuy(save,"back","15prestige",true),Is.False);
+    }
+    [Test]
+    public void MissionCurrencyNeedsExplicitClaimAndHasNoPopup()
+    {
+        var save=new PlayerSave();Assert.That(ProgressionRules.ClaimIntroMission(save,1),Is.False);
+        save.RulesRead=true;Assert.That(save.Wallet.RewardCurrency,Is.Zero);
+        Assert.That(ProgressionRules.ClaimIntroMission(save,1),Is.True);
+        Assert.That(save.Wallet.RewardCurrency,Is.EqualTo(10));Assert.That(save.PendingUnlocks,Is.Empty);
+        Assert.That(ProgressionRules.ClaimIntroMission(save,1),Is.False);
+        Assert.That(save.Wallet.RewardCurrency,Is.EqualTo(10));
+    }
     [TestCase("Q Q 9 9","dama dama 99",true)]
     [TestCase("J J","jupek dupek",true)]
     [TestCase("K K","król king",true)]
@@ -28,15 +50,35 @@ public class ProfileLevelProgressionTests
         Assert.That(save.Wallet.Coins,Is.Zero);
     }
     [Test]
-    public void FramePrizeIsClaimedExactlyOnce()
+    public void FramesCanNeverBeClaimedFromSpin()
     {
         var save=new PlayerSave();save.Wheel.PendingPrize=new SpinPrize{Category="frame",ItemId="level:10"};
-        Assert.That(ProgressionRules.ClaimSpinPrize(save),Is.True);
         Assert.That(ProgressionRules.ClaimSpinPrize(save),Is.False);
-        Assert.That(save.Inventory.OwnedFrames,Does.Contain("level:10"));
-        Assert.That(save.Wheel.AvatarsWon,Is.EqualTo(1));
+        Assert.That(save.Inventory.OwnedFrames,Is.Empty);
+        Assert.That(save.Wheel.PendingPrize,Is.Null);
     }
     [Test]
+    public void EarlyFramesMustBeUnlockedInOrder()
+    {
+        var save=new PlayerSave();
+        Assert.That(CosmeticCatalog.CanUnlockFrame(save,"level:10"),Is.True);
+        Assert.That(CosmeticCatalog.CanUnlockFrame(save,"level:400"),Is.False);
+        save.Inventory.OwnedFrames.Add("level:10");
+        Assert.That(CosmeticCatalog.CanUnlockFrame(save,"level:20"),Is.True);
+        Assert.That(CosmeticCatalog.CanUnlockFrame(save,"level:30"),Is.False);
+    }
+    [Test]
+    public void PlacementRewardsAreOrderedAndFirstWinLevelsUp()
+    {
+        for(int total=2;total<=10;total++)
+        {
+            Assert.That(ProgressionRules.MatchExperience(total,total),Is.EqualTo(15));
+            for(int place=2;place<=total;place++)Assert.That(ProgressionRules.MatchExperience(place,total),Is.LessThan(ProgressionRules.MatchExperience(place-1,total)));
+        }
+        var save=new PlayerSave();ProgressionRules.CompleteMatch(save,"winner",true,DateTime.UtcNow,20,ProgressionRules.MatchExperience(1,6));
+        Assert.That(save.Progression.Level,Is.GreaterThanOrEqualTo(2));
+        Assert.That(save.Inventory.OwnedFrames,Does.Not.Contain("classic_wood"));
+    }    [Test]
     public void PendingSpinDoesNotGrantGoldUntilClaimAndCannotBeClaimedTwice()
     {
         var save=new PlayerSave();save.Wheel.PendingPrize=new SpinPrize{Category="gold",Amount=44};

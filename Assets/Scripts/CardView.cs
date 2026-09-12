@@ -32,7 +32,7 @@ public class CardView : MonoBehaviour
         cardImage.color = Color.white;
         // Keep the portrait artwork proportional inside the existing card
         // bounds. Front-card geometry remains unchanged when revealed.
-        cardImage.preserveAspect = true;
+        cardImage.preserveAspect = false;
         cardImage.enabled = true;
     }
 }

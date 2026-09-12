@@ -342,7 +342,8 @@ public class TableSeatSpawner : MonoBehaviour
             string profileId = GetStringProperty(p, PhotonAvatarSync.ProfileIdKey);
             Canvas owner = seatGO.GetComponentInParent<Canvas>();
             view.ConfigureProfileButton(() => PublicPlayerProfileUI.Show(owner, avatar, p.NickName,
-                publicGames, publicWins, profileId));
+                publicGames, publicWins, profileId,p.ActorNumber));
+            seatGO.AddComponent<PlayerReactions>().Actor=p.ActorNumber;
         }
 
         if (cardDealTest != null)
@@ -396,6 +397,7 @@ public class TableSeatSpawner : MonoBehaviour
             }
 
             view.Set(bot.Name, avatar);
+            view.ConfigureProfileButton(()=>PublicPlayerProfileUI.Show(view.GetComponentInParent<Canvas>(),avatar,bot.Name,0,0,"bot:"+bot.ActorNumber,bot.ActorNumber));
         }
 
         if (cardDealTest != null)

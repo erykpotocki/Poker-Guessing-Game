@@ -5,10 +5,10 @@ namespace PokerProfile
 {
     [Serializable] public sealed class PlayerProfile
     {
-        public string Nickname = "Gracz";
+        public string Nickname = "Gracz"; public string JoinedUtc = DateTime.UtcNow.ToString("yyyy-MM-dd");
         public string SelectedAvatarId = "avatar_0";
         public string SelectedFrameId = "none";
-        public string SelectedCardBackId = "2clasic";
+        public string SelectedCardBackId = "6";
         public string SelectedOfflineCardBackId = "HotSeatBack_Ornate";
     }
     [Serializable] public sealed class Wallet { public long Coins, RewardCurrency; }
@@ -16,9 +16,9 @@ namespace PokerProfile
     {
         public List<string> OwnedAvatars = new List<string> { "avatar_0" };
         public List<string> OwnedFrames = new List<string>();
-        public List<string> OwnedCardBacks = new List<string> { "2clasic" };
+        public List<string> OwnedCardBacks = new List<string> { "6" };
     }
-    [Serializable] public sealed class Statistics { public int GamesPlayed, GamesWon, RoundsPlayed, AdsWatched, Spins; }
+    [Serializable] public sealed class Statistics { public int GamesPlayed, GamesWon, RoundsPlayed, RoundsWon, Eliminations, AdsWatched, Spins; }
     [Serializable] public sealed class OpponentRecord
     {
         public string ProfileId = "";
@@ -115,6 +115,23 @@ namespace PokerProfile
             else return false;
             data.Wheel.PendingPrize=null;return true;
         }
+        public static readonly string[] IntroMissionIds={"first_game","read_rules","first_win","ten_rounds"};
+        public static bool IntroMissionReady(PlayerSave d,int mission)=>mission==0?d.Statistics.GamesPlayed>0:mission==1?d.RulesRead:mission==2?d.Statistics.GamesWon>0:mission==3&&d.Statistics.RoundsPlayed>=10;
+        public static bool ClaimIntroMission(PlayerSave d,int mission)
+        {
+            d.ClaimedIntroMissions??=new List<string>();
+            if(mission<0||mission>=IntroMissionIds.Length||!IntroMissionReady(d,mission)||d.ClaimedIntroMissions.Contains(IntroMissionIds[mission]))return false;
+            d.ClaimedIntroMissions.Add(IntroMissionIds[mission]);
+            if(mission==0)Unlock(d,"frame","classic_wood","Ramka za pierwszą grę","mission");
+            else if(mission==1)d.Wallet.RewardCurrency+=10;
+            else d.Wallet.Coins+=mission==2?100:50;
+            return true;
+        }
+        public static int MatchExperience(int placement,int total)
+        {
+            total=Math.Max(2,total);placement=Math.Max(1,Math.Min(total,placement));
+            return (int)Math.Round(150*(.1+.9*(total-placement)/(double)(total-1)));
+        }
         public const int MaxExtraSpins = 2;
         public static void RefreshPeriods(PlayerSave data, DateTime utc)
         {
@@ -148,7 +165,7 @@ namespace PokerProfile
             if (won) data.Statistics.GamesWon++;
             data.Wallet.Coins += Math.Max(0,Math.Min(won&&advanced?230:200,coins));
             int previousLevel=data.Progression.Level;
-            data.Progression.Experience += Math.Max(0,Math.Min(100,xp));
+            data.Progression.Experience += Math.Max(0,Math.Min(150,xp));
             for(int level=previousLevel+1;level<=data.Progression.Level;level++)
             {
                 data.Wallet.Coins+=Progression.LevelGold(level);
@@ -231,5 +248,3 @@ namespace PokerProfile
         }
     }
 }
-
-

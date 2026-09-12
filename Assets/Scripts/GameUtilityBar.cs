@@ -200,7 +200,8 @@ public sealed class GameUtilityBar : MonoBehaviour
         ProfileTestTools.AddSettingsButton(overlay,canvas);
         if(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name=="Game")
         {
-            box.sizeDelta=new Vector2(620,860);
+            box.sizeDelta=new Vector2(620,970);
+            SettingsAction(box,"ChatSettings","CZAT",0,-800,()=>{Destroy(overlay.gameObject);RoundLogUI.ShowOptions(canvas);});
             AddSlider(box,"Wielkość przycisków",-650f,PlayerPrefs.GetFloat("ui.handButtonScale",1f),v=>PlayerPrefs.SetFloat("ui.handButtonScale",v),.8f,1.6f);
         }
         Rect bounds=((RectTransform)root).rect;

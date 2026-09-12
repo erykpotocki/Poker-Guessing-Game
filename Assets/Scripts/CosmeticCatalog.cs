@@ -28,7 +28,9 @@ public static class CosmeticCatalog
         }
         else if(category=="back")
         {
-            o.Sprite=CardBackDatabase.FindOnline(id);o.Title="Rewers "+id;
+            o.Sprite=Array.Find(CardBackDatabase.OnlineSprites,s=>s.name==id);o.Title="Rewers "+id;
+            if(o.Sprite==null)return o;
+            if(id=="6")return o;
             if(id.EndsWith("prestige") && int.TryParse(id.Replace("prestige",""),out int tier))
             {o.Gold=tier<=6?5000:tier<=14?7500:10000;o.Diamonds=tier<=6?500:tier<=14?750:1000;o.Both=tier>=15;o.Spin=tier<15;}
             else if(id.Contains("wood")){o.Gold=250;o.Spin=true;}
@@ -36,9 +38,23 @@ public static class CosmeticCatalog
             else if(id.Length==1){o.Gold=1000;o.Spin=true;}
             else o.Spin=true;
         }
+        else if(category=="frame" && id=="classic_wood")
+        {o.Sprite=LevelFrameCatalog.Resolve(id);o.Title="Ramka za pierwszą grę";}
         else if(category=="frame" && id.StartsWith("level:") && int.TryParse(id.Substring(6),out int level))
-        {o.Diamonds=level*10;o.Sprite=LevelFrameCatalog.Resolve(id);o.Title="Ramka · poziom "+level;}
+        {o.Diamonds=Array.IndexOf(LevelFrameCatalog.Levels,level)>=0?level*10:0;o.Sprite=LevelFrameCatalog.Resolve(id);o.Title="Ramka · poziom "+level;}
         return o;
+    }
+    public static bool TryBuy(PlayerSave d,string category,string id,bool diamonds)
+    {
+        var offer=Get(category,id);
+        var inventory=category=="avatar"?d.Inventory.OwnedAvatars:category=="back"?d.Inventory.OwnedCardBacks:d.Inventory.OwnedFrames;
+        if(!offer.Purchasable||inventory.Contains(id))return false;
+        if(category=="frame"&&!CanUnlockFrame(d,id))return false;
+        if(!offer.Both&&(diamonds?offer.Diamonds:offer.Gold)<=0)return false;
+        int gold=offer.Both||!diamonds?offer.Gold:0,gems=offer.Both||diamonds?offer.Diamonds:0;
+        if(d.Wallet.Coins<gold||d.Wallet.RewardCurrency<gems)return false;
+        d.Wallet.Coins-=gold;d.Wallet.RewardCurrency-=gems;
+        ProgressionRules.Unlock(d,category,id,offer.Title,"shop");return true;
     }
     public static bool Owned(string category,string id)
     {

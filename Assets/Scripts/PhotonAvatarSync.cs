@@ -40,6 +40,13 @@ public class PhotonAvatarSync : MonoBehaviourPunCallbacks
         var props = new Hashtable
         {
             { AvatarKey, idx },
+            {"roundWinsV1",PlayerProfileService.Data.Statistics.RoundsWon},
+            {"eliminationsV1",PlayerProfileService.Data.Statistics.Eliminations},
+            {"levelV1",PlayerProfileService.Data.Progression.Level},
+            {"joinedV1",PlayerProfileService.Data.Profile.JoinedUtc??"—"},
+            {"avatarsV1",PlayerProfileService.Data.Inventory.OwnedAvatars.Count},
+            {"framesV1",PlayerProfileService.Data.Inventory.OwnedFrames.Count},
+            {"backsV1",PlayerProfileService.Data.Inventory.OwnedCardBacks.Count},
             { ProfileIdKey, profileId },
             { GamesPlayedKey, PlayerProfileService.Data.Statistics.GamesPlayed },
             { GamesWonKey, PlayerProfileService.Data.Statistics.GamesWon },

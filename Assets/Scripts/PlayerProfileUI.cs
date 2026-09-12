@@ -188,7 +188,7 @@ public sealed class PlayerProfileUI : MonoBehaviour, IPointerDownHandler
         scroll.horizontal = false; scroll.vertical = true; scroll.movementType = ScrollRect.MovementType.Clamped; scroll.scrollSensitivity = 65;
         float y = 0f;
         if (!string.IsNullOrEmpty(message)) { Text(body,message,8,y,width-16,72); y += 80; }
-        Text(body,$"Ukończone gry: {data.Statistics.GamesPlayed}   Wygrane: {data.Statistics.GamesWon}",8,y,width-16,64); y += 72;
+        Text(body,$"Ukończone gry: {data.Statistics.GamesPlayed}   Wygrane: {data.Statistics.GamesWon}  ({(data.Statistics.GamesPlayed>0?100f*data.Statistics.GamesWon/data.Statistics.GamesPlayed:0):0}%)\nWygrane rundy: {data.Statistics.RoundsWon}   Eliminacje: {data.Statistics.Eliminations}",8,y,width-16,110,28); y += 122;
         string[] tabIds={"avatar","frame","back"}; string[] tabNames={"AVATARY","RAMKI","REWERSY"};
         float tabWidth=(width-20f)/3f;
         for(int tab=0;tab<3;tab++)
@@ -390,4 +390,3 @@ public sealed class PlayerProfileUI : MonoBehaviour, IPointerDownHandler
         foreach(var edge in edges){var ink=edge.gameObject.AddComponent<Image>();ink.color=tint;ink.raycastTarget=false;}
     }
 }
-

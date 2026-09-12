@@ -59,7 +59,7 @@ public sealed class ShopUI : MonoBehaviour
             var button=tile.gameObject.AddComponent<Button>();button.onClick.AddListener(()=>Preview(GetComponent<Canvas>(),offer.Category,offer.Id,Build));
         }
     }
-    private static string Price(CosmeticCatalog.Offer o)=>!o.Purchasable?"Tylko ze spina":o.Gold>0&&o.Diamonds>0?$"{o.Gold} złota\n{(o.Both?"+":"lub")} {o.Diamonds} ◆":o.Gold>0?$"{o.Gold} złota":$"{o.Diamonds} ◆";
+    private static string Price(CosmeticCatalog.Offer o)=>!o.Purchasable?(o.Id=="6"?"Darmowy":o.Category=="frame"?"Nagroda za misję":o.Spin?"Tylko ze spina":"Niedostępne"):o.Gold>0&&o.Diamonds>0?$"{o.Gold} złota\n{(o.Both?"+":"lub")} {o.Diamonds} ◆":o.Gold>0?$"{o.Gold} złota":$"{o.Diamonds} ◆";
     public static void Preview(Canvas canvas,string category,string id,Action changed=null)
     {
         if(canvas==null)return;var offer=CosmeticCatalog.Get(category,id);var root=Overlay(canvas,"PurchasePreview");root.GetComponent<Canvas>().sortingOrder=700;
@@ -71,7 +71,7 @@ public sealed class ShopUI : MonoBehaviour
         var status=Text(root,"",20,y+74,w-40,74,25);
         Action<bool> buy=gems=>{if(PlayerProfileService.BuyCosmetic(category,id,gems)){Destroy(root.gameObject);changed?.Invoke();UnlockPresentationUI.ShowPending(canvas);}else status.text="Za mało środków lub przedmiot już odblokowany.";};
         if(owned)Button(root,"ZAŁÓŻ",20,y,w-40,65,()=>{PlayerProfileService.Equip(category,id);Destroy(root.gameObject);changed?.Invoke();});
-        else if(!allowed)status.text="Odblokuj najpierw poprzednie ramki.\nRamki otrzymujesz też za poziom.";
+        else if(!allowed)status.text=id=="classic_wood"?"Ukończ pierwszą grę i odbierz ramkę w Misjach.":"Odblokuj najpierw poprzednie ramki.\nRamki otrzymujesz też za poziom.";
         else if(offer.Both)Button(root,$"KUP: {offer.Gold} złota + {offer.Diamonds} ◆",20,y,w-40,65,()=>buy(true));
         else if(offer.Purchasable)
         {
@@ -81,4 +81,3 @@ public sealed class ShopUI : MonoBehaviour
         Button(root,"WRÓĆ",20,h-84,w-40,64,()=>Destroy(root.gameObject));
     }
 }
-

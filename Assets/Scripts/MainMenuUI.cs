@@ -74,6 +74,7 @@ public class MainMenuUI : MonoBehaviour
             HidePreviewObject(rulesButton.gameObject);
             HidePreviewObject(settingsButton.gameObject);
             HidePreviewObject(shopButton.gameObject);
+            HidePreviewObject(missionsButton.gameObject);HidePreviewObject(adventureButton.gameObject);
             HidePreviewObject(backButton.gameObject);
             HidePreviewObject(infoOverlay);
         }
@@ -88,7 +89,7 @@ public class MainMenuUI : MonoBehaviour
         DestroyPreviewObject(secondaryButton);
         DestroyPreviewObject(rulesButton);
         DestroyPreviewObject(settingsButton);
-        DestroyPreviewObject(shopButton);
+        DestroyPreviewObject(shopButton);DestroyPreviewObject(missionsButton);DestroyPreviewObject(adventureButton);
         DestroyPreviewObject(profileButton);
         DestroyPreviewObject(spinButton);
         DestroyPreviewObject(backButton);
@@ -372,14 +373,14 @@ public class MainMenuUI : MonoBehaviour
         ConfigureButton(rulesButton, "ZASADY", string.Empty, ShowRules);
         ConfigureButton(settingsButton, "USTAWIENIA", string.Empty, ShowSettings);
         ConfigureButton(shopButton, "SKLEP", string.Empty, ShowShop);
-        ConfigureButton(missionsButton,"MISJE",string.Empty,()=>MissionsUI.Show(GetComponentInParent<Canvas>()));
+        ConfigureButton(missionsButton,"MISJE",string.Empty,()=>MissionsUI.Show(menuGroup.GetComponentInParent<Canvas>()));
         ConfigureButton(adventureButton,"PRZYGODA",string.Empty,()=>ShowInfo("PRZYGODA","WKRÓTCE","Pokonuj kolejnych przeciwników w trybie dla jednego gracza. Ten tryb jest w przygotowaniu."));
         missionsButton.gameObject.SetActive(true);adventureButton.gameObject.SetActive(true);
         rulesButton.gameObject.SetActive(true);
         settingsButton.gameObject.SetActive(true);
         shopButton.gameObject.SetActive(true);
         backButton.gameObject.SetActive(false);
-        ShowButtonsImmediately(primaryButton, secondaryButton, shopButton, rulesButton, settingsButton);
+        ShowButtonsImmediately(primaryButton, secondaryButton, shopButton, rulesButton, settingsButton, missionsButton, adventureButton);
     }
 
     private void ShowMultiplayerOptions()
@@ -537,4 +538,3 @@ public class MainMenuUI : MonoBehaviour
         SceneManager.LoadScene(sceneName);
     }
 }
-

@@ -48,6 +48,7 @@ public static class PlayerProfileService
                 ProgressionRules.Own(current.Inventory.OwnedAvatars,avatar);
             }
             current.Profile ??= new PlayerProfile();
+            if(!string.IsNullOrEmpty(json)&&!json.Contains("\"JoinedUtc\""))current.Profile.JoinedUtc="—";
             current.Inventory ??= new Inventory();
             current.Wallet ??= new Wallet();
             current.Statistics ??= new Statistics();
@@ -67,8 +68,8 @@ public static class PlayerProfileService
             current.Receipts ??= new System.Collections.Generic.List<string>();
             current.Opponents ??= new System.Collections.Generic.List<OpponentRecord>();
             current.PendingUnlocks ??= new System.Collections.Generic.List<PendingUnlock>();
-            ProgressionRules.Own(current.Inventory.OwnedCardBacks,"2clasic");
-            if((current.Profile.SelectedCardBackId??"").StartsWith("HotSeatBack_")||string.IsNullOrEmpty(current.Profile.SelectedCardBackId))current.Profile.SelectedCardBackId="2clasic";
+            ProgressionRules.Own(current.Inventory.OwnedCardBacks,"6");
+            if((current.Profile.SelectedCardBackId??"").StartsWith("HotSeatBack_")||string.IsNullOrEmpty(current.Profile.SelectedCardBackId))current.Profile.SelectedCardBackId="6";
             // Old wheel rewards used the global presentation queue. Keep the
             // owned items, but discard their duplicate notification on upgrade.
             current.PendingUnlocks.RemoveAll(item => item.Category == "avatar" &&
@@ -107,13 +108,15 @@ public static class PlayerProfileService
     }
     public static string AvatarId(int index, Sprite sprite) => index < 10 ? "avatar_"+index : "download:"+sprite.name;
     public static bool ShopAvailable => true;
-    public static bool CompleteMatch(string id,bool won,int bots=0,int humans=1,int durationSeconds=0,bool advanced=false)
+    public static bool CompleteMatch(string id,bool won,int bots=0,int humans=1,int durationSeconds=0,bool advanced=false,int placement=0)
     {
         if ((id??"").StartsWith("hotseat:",StringComparison.OrdinalIgnoreCase)) return false;
         int minutes = Mathf.Clamp(durationSeconds / 60,0,20);
         int coins = Mathf.Clamp(10 + Mathf.Clamp(bots,0,5)*10 + minutes*7,10,200);
         if(won&&advanced)coins=Mathf.RoundToInt(coins*1.15f);
-        int xp = Mathf.Clamp(15 + Mathf.Clamp(bots,0,5)*5 + minutes*3 + (won?10:0),15,100);
+        int total=Mathf.Max(2,bots+humans);
+        int rank=won?1:Mathf.Clamp(placement<=0?total:placement,2,total);
+        int xp=ProgressionRules.MatchExperience(rank,total);
         bool completed = ProgressionRules.CompleteMatch(Data,id,won,DateTime.UtcNow,coins,xp,humans>=2,advanced);
         if (completed)
         {
@@ -134,16 +137,8 @@ public static class PlayerProfileService
     public static bool BuyWithDiamonds(string category,string id,int price,string title) => BuyCosmetic(category,id,true);
     public static bool BuyCosmetic(string category,string id,bool diamonds)
     {
-        var offer=CosmeticCatalog.Get(category,id);
-        if(!offer.Purchasable||CosmeticCatalog.Owned(category,id))return false;
-        if(category=="frame"&&!CosmeticCatalog.CanUnlockFrame(Data,id))return false;
-        if(!offer.Both && (diamonds?offer.Diamonds:offer.Gold)<=0)return false;
-        int gold=offer.Both||!diamonds?offer.Gold:0;
-        int gems=offer.Both||diamonds?offer.Diamonds:0;
-        if(Data.Wallet.Coins<gold||Data.Wallet.RewardCurrency<gems)return false;
-        Data.Wallet.Coins-=gold;Data.Wallet.RewardCurrency-=gems;
-        ProgressionRules.Unlock(Data,category,id,offer.Title,"shop");Save();PurchaseCompleted?.Invoke();return true;
-    }    public static void RecordOpponentMatch(string profileId,string nickname,bool localWon)
+        if(!CosmeticCatalog.TryBuy(Data,category,id,diamonds))return false;
+        Save();PurchaseCompleted?.Invoke();return true;    }    public static void RecordOpponentMatch(string profileId,string nickname,bool localWon)
     {
         if (string.IsNullOrWhiteSpace(profileId)) profileId = "nick:" + (nickname ?? "Gracz");
         if (Data.Opponents == null) Data.Opponents = new System.Collections.Generic.List<OpponentRecord>();
@@ -162,6 +157,13 @@ public static class PlayerProfileService
     {
         if (Data.Opponents == null || string.IsNullOrWhiteSpace(profileId)) return null;
         return Data.Opponents.Find(item => item.ProfileId == profileId);
+    }
+    public static void RecordRoundResult(string id,bool won,bool elimination)
+    {
+        if(!ProgressionRules.CompleteRound(Data,id,DateTime.UtcNow))return;
+        if(won)Data.Statistics.RoundsWon++;
+        if(elimination)Data.Statistics.Eliminations++;
+        Save();
     }
     public static void CompleteRound(string id) { if (ProgressionRules.CompleteRound(Data,id,DateTime.UtcNow)) Save(); }
     public static TimeSpan SpinRemaining
@@ -320,5 +322,3 @@ public static class PlayerProfileService
         catch (Exception) { adInFlight = false; if (!completed) done?.Invoke(AdOutcome.Failed); }
     }
 }
-
-

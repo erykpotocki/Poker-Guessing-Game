@@ -14,7 +14,7 @@ public sealed class RoundReviewUI : MonoBehaviour
         public string declaration;
         public string strongest;
         public bool exists;
-        public int loser;
+        public int loser, checker, declarer; public bool eliminated, outcomeCommitted;
         public int[] participants;
         public int[] cards;
         public int[] matching;
@@ -79,6 +79,7 @@ public sealed class RoundReviewUI : MonoBehaviour
         {
             History loaded = JsonUtility.FromJson<History>(json);
             if (loaded != null && loaded.rounds != null) history = loaded;
+            RecordLocalStatistics();
         }
     }
 
@@ -101,7 +102,7 @@ public sealed class RoundReviewUI : MonoBehaviour
         List<CardSpriteEntry> matches = MultiplayerHandRules.MatchingCards(id, cards, out _);
         Entry entry = new Entry
         {
-            round = round, declaration = declaration, exists = exists, loser = loser,
+            round = round, declaration = declaration, exists = exists, loser = loser, checker=checker,declarer=declarer,
             checkerName = PlayerName(checker), declarerName = PlayerName(declarer),
             participants = participants.ToArray(),
             strongest = HandRankCatalog.GetDisplayName(MultiplayerHandRules.Strongest(cards)),
@@ -123,6 +124,27 @@ public sealed class RoundReviewUI : MonoBehaviour
         history.rounds.Add(entry);
     }
 
+    public void CommitOutcome(bool eliminated)
+    {
+        if(Latest==null)return;Latest.eliminated=eliminated;Latest.outcomeCommitted=true;RecordLocalStatistics();
+    }
+    public int Placement(int actor,int total)
+    {
+        foreach(var entry in history.rounds)if(entry.eliminated&&entry.loser==actor)return entry.participants.Length;
+        return total;
+    }
+    private void RecordLocalStatistics()
+    {
+        if(PhotonNetwork.LocalPlayer==null||PhotonNetwork.CurrentRoom==null)return;
+        int actor=PhotonNetwork.LocalPlayer.ActorNumber;
+        var room=PhotonNetwork.CurrentRoom;room.CustomProperties.TryGetValue("gameSeedV1",out object seed);
+        foreach(var entry in history.rounds)
+        {
+            if(!entry.outcomeCommitted||entry.participants==null||Array.IndexOf(entry.participants,actor)<0)continue;
+            int winner=entry.exists?entry.declarer:entry.checker;
+            PlayerProfileService.RecordRoundResult(room.Name+":"+seed+":"+entry.round,winner==actor,entry.eliminated&&entry.checker==actor&&entry.loser!=actor);
+        }
+    }
     public string SerializeHistory() => JsonUtility.ToJson(history);
     private static string PlayerName(int actor) => LobbyBotRegistry.TryGetBot(actor, out LobbyBotInfo bot) ? bot.Name :
         PhotonNetwork.CurrentRoom != null && PhotonNetwork.CurrentRoom.Players.TryGetValue(actor, out var player) ? player.NickName : "Gracz " + actor;

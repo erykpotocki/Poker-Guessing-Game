@@ -26,12 +26,12 @@ public sealed class UnlockPresentationUI : MonoBehaviour
         PendingUnlock item=PlayerProfileService.PeekUnlock();if(item==null){Destroy(gameObject);return;}
         RectTransform panel=Rect("GoldenUnlock",transform,Vector2.zero,new Vector2(700,800));panel.gameObject.AddComponent<Image>().color=new Color(.015f,.045f,.040f,1f);
         bool level=item.Category=="level";
-        Text(panel,item.Title,new Vector2(0,level?260:310),new Vector2(620,level?170:100),level?34:36).richText=false;
-        if(!level)Text(panel,"Gratulacje!",new Vector2(0,210),new Vector2(620,70),48);
+        Text(panel,item.Title,new Vector2(0,level?260:245),new Vector2(620,level?170:70),level?34:28).richText=false;
+        if(!level)Text(panel,"Gratulacje!",new Vector2(0,320),new Vector2(620,80),60);
         Sprite preview=Resolve(item);
         Image image=Rect("UnlockedItem",panel,new Vector2(0,20),new Vector2(280,280)).gameObject.AddComponent<Image>();image.sprite=preview;image.preserveAspect=true;image.raycastTarget=false;
         if(item.Category=="avatar"||level) AvatarCircleUtility.Apply(image);
-        for(int i=0;i<12;i++){float a=i*Mathf.PI*2/12;RectTransform star=Rect("Star",panel,new Vector2(Mathf.Cos(a)*230,20+Mathf.Sin(a)*160),new Vector2(46,46));var sparkle=star.gameObject.AddComponent<RawImage>();sparkle.texture=Resources.Load<Texture2D>("UI/Sparkles/SparkleBurst");sparkle.raycastTarget=false;stars.Add(star);}
+        for(int i=0;i<12;i++){float a=i*2.39996f;RectTransform star=Rect("Star",panel,new Vector2(Mathf.Cos(a)*UnityEngine.Random.Range(150,235),20+Mathf.Sin(a)*UnityEngine.Random.Range(150,210)),new Vector2(46,46));var sparkle=star.gameObject.AddComponent<RawImage>();sparkle.texture=Resources.Load<Texture2D>("UI/Sparkles/SparkleBurst");sparkle.raycastTarget=false;stars.Add(star);}
         var bounds=((RectTransform)owner.rootCanvas.transform).rect;
         panel.localScale=Vector3.one*Mathf.Min(1,Mathf.Min(bounds.width/730,bounds.height/840));
         Button accept=Rect("Continue",panel,new Vector2(0,-280),new Vector2(390,82)).gameObject.AddComponent<Button>();Image bg=accept.gameObject.AddComponent<Image>();accept.targetGraphic=bg;
@@ -47,5 +47,18 @@ public sealed class UnlockPresentationUI : MonoBehaviour
         if(item.Category=="back"){CardBackDatabase db=new GameObject("UnlockBackResolver").AddComponent<CardBackDatabase>();for(int i=0;i<db.BackCount;i++){Sprite s=db.GetBackSprite(i);if(s!=null&&s.texture.name==item.ItemId){Destroy(db.gameObject);return s;}}Destroy(db.gameObject);}
         return null;
     }
-    private void Update(){for(int i=0;i<stars.Count;i++)if(stars[i]!=null){float pulse=1f+.22f*Mathf.Sin(Time.unscaledTime*3f+i);stars[i].localScale=Vector3.one*pulse;stars[i].Rotate(0,0,25f*Time.unscaledDeltaTime);}}
+    private float animationTime;
+    private void Update()
+    {
+        animationTime+=Time.unscaledDeltaTime;
+        var group=GetComponent<CanvasGroup>();if(group==null)group=gameObject.AddComponent<CanvasGroup>();
+        group.alpha=Mathf.SmoothStep(0,1,animationTime/.45f);group.interactable=animationTime>.45f;
+        for(int i=0;i<stars.Count;i++)if(stars[i]!=null)
+        {
+            float t=Mathf.Clamp01((animationTime-.25f-i*.015f)/1.1f);
+            stars[i].localScale=Vector3.one*(.5f+.9f*t);stars[i].Rotate(0,0,(i%2==0?35:-25)*Time.unscaledDeltaTime);
+            var image=stars[i].GetComponent<RawImage>();image.color=new Color(1,1,1,Mathf.Sin(t*Mathf.PI));
+            if(t>=1)stars[i].gameObject.SetActive(false);
+        }
+    }
 }

@@ -614,6 +614,7 @@ public partial class TurnManager : MonoBehaviour, IOnEventCallback
         applyingReviewResult = true;
 
         bool eliminated = ApplyLossToPlayer(loserActorNumber, out int nextCardCount);
+        roundReview.CommitOutcome(eliminated);
         if (eliminated)
         {
             AddSystemLog("<b>" + GetPlayerDisplayName(loserActorNumber) + "</b> odpada z gry");
@@ -1431,7 +1432,7 @@ public partial class TurnManager : MonoBehaviour, IOnEventCallback
             foreach(Player participant in PhotonNetwork.PlayerList)
                 if(!participant.IsInactive && (participants==null || System.Array.IndexOf(participants,participant.ActorNumber)>=0))humans++;
             bool eligible=participants==null || System.Array.IndexOf(participants,PhotonNetwork.LocalPlayer.ActorNumber)>=0;
-            if (eligible && PlayerProfileService.CompleteMatch(PhotonNetwork.CurrentRoom.Name + ":" + seed, localWon,bots,humans,duration,LobbyBotRegistry.GetBots().Exists(bot=>bot.Advanced)))
+            if (eligible && PlayerProfileService.CompleteMatch(PhotonNetwork.CurrentRoom.Name + ":" + seed, localWon,bots,humans,duration,LobbyBotRegistry.GetBots().Exists(bot=>bot.Advanced),localWon?1:roundReview!=null?roundReview.Placement(PhotonNetwork.LocalPlayer.ActorNumber,bots+humans):bots+humans))
             {
                 foreach (Player opponent in PhotonNetwork.PlayerList)
                 {

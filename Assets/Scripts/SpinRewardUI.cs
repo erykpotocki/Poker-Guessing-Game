@@ -13,6 +13,8 @@ public sealed class SpinRewardUI : MonoBehaviour
     private TMP_Text headline, hint, spinCaption;
     private Image spinBackground;
     private bool spinning;
+    private RectTransform advertisement;
+    private void OnDestroy(){if(advertisement!=null)Destroy(advertisement.gameObject);}
     public static void Show(Canvas owner)
     {
         if(owner==null)return;
@@ -92,7 +94,9 @@ public sealed class SpinRewardUI : MonoBehaviour
     private IEnumerator WatchAd()
     {
         spinning=true;
-        var cover=Box("AdvertisementPlaceholder",transform,Vector2.zero,Vector2.zero);
+        var cover=Box("AdvertisementPlaceholder",transform,Vector2.zero,Vector2.zero);advertisement=cover;
+        cover.SetParent(GetComponentInParent<Canvas>().rootCanvas.transform,false);
+        var adLayer=cover.gameObject.AddComponent<Canvas>();adLayer.overrideSorting=true;adLayer.sortingOrder=1500;cover.gameObject.AddComponent<GraphicRaycaster>();
         cover.anchorMin=Vector2.zero;cover.anchorMax=Vector2.one;cover.offsetMin=cover.offsetMax=Vector2.zero;
         cover.gameObject.AddComponent<Image>().color=Color.black;
         var caption=Text(cover,"",Vector2.zero,new Vector2(780,240),42);
@@ -188,13 +192,10 @@ public sealed class SpinRewardUI : MonoBehaviour
         int charges=PlayerProfileService.SpinCharges;
         timer.fontSize=38;timer.rectTransform.sizeDelta=new Vector2(760,140);
         string countdown=$"{(int)left.TotalHours:00}:{left.Minutes:00}:{left.Seconds:00}";
-        timer.text=$"<size=120%>{charges}/3 spiny</size>\n"+(charges==3?"Posiadasz 3 spiny. Zakręć, by poznać swoją nagrodę!":charges==0?$"Wróć za {countdown}, by spróbować ponownie!":$"Do odnowienia kolejnego spina pozostało {countdown}");
+        timer.text=$"<size=160%>{charges}/3 spiny</size>\n"+(charges==3?"Posiadasz 3 spiny. Zakręć, by poznać swoją nagrodę!":charges==0?$"Wróć za {countdown}, by spróbować ponownie!":$"Do odnowienia kolejnego spina pozostało {countdown}");
         spinCaption.text=charges>0||PlayerProfileService.Data.Wheel.PendingPrize!=null?"Zakręć spinem":"Obejrzyj reklamę, by zakręcić już teraz!";
         spinCaption.fontSize=spin.interactable?30:25;
         spinBackground.color=spin.interactable?new Color(1,.78f,.25f):new Color(.19f,.25f,.22f);
         spinCaption.color=spin.interactable?new Color(.08f,.06f,.02f):new Color(.7f,.77f,.72f);
     }
 }
-
-
-

@@ -126,25 +126,29 @@ public sealed class PortraitMenuTopBar : MonoBehaviour
 
     private long lastGold=-1,lastDiamonds=-1;
     private Coroutine goldAnimation,diamondAnimation;
+    private readonly System.Collections.Generic.Dictionary<TMP_Text,long> displayedCurrency=new();
     private void AnimateCurrency(TMP_Text text,long amount,ref long previous,ref Coroutine animation)
     {
         if(previous==amount)return;
         long start=previous;previous=amount;
         if(animation!=null)StopCoroutine(animation);
-        if(start<0||amount<=start){text.text=FormatCurrency(amount);return;}
-        animation=StartCoroutine(CurrencyGain(text,start,amount));
+        var old=text.transform.Find("CurrencyGain");if(old!=null)Destroy(old.gameObject);
+        if(start<0||amount<=start){text.text=FormatCurrency(amount);displayedCurrency[text]=amount;return;}
+        long displayed=displayedCurrency.TryGetValue(text,out long currentValue)?currentValue:start;
+        animation=StartCoroutine(CurrencyGain(text,displayed,amount,amount-start));
     }
-    private System.Collections.IEnumerator CurrencyGain(TMP_Text target,long start,long end)
+    private System.Collections.IEnumerator CurrencyGain(TMP_Text target,long start,long end,long gain)
     {
         var go=new GameObject("CurrencyGain",typeof(RectTransform),typeof(TextMeshProUGUI));
         go.transform.SetParent(target.transform,false);
         var rect=(RectTransform)go.transform;rect.anchorMin=rect.anchorMax=new Vector2(.5f,0);rect.pivot=new Vector2(.5f,1);rect.sizeDelta=new Vector2(180,64);
-        var label=go.GetComponent<TMP_Text>();label.text="+"+(end-start);label.fontSize=32;label.color=target.color;label.alignment=TextAlignmentOptions.Center;label.raycastTarget=false;
+        var label=go.GetComponent<TMP_Text>();label.text="+"+gain;label.fontSize=32;label.color=target.color;label.alignment=TextAlignmentOptions.Center;label.raycastTarget=false;
         float elapsed=0,duration=Mathf.Clamp((end-start)*.045f,.35f,1.5f);
         while(elapsed<duration+.7f)
         {
             elapsed+=Time.unscaledDeltaTime;
-            target.text=FormatCurrency(start+(long)System.Math.Round((end-start)*Mathf.Clamp01(elapsed/duration)));
+            displayedCurrency[target]=start+(long)System.Math.Round((end-start)*Mathf.Clamp01(elapsed/duration));
+            target.text=FormatCurrency(displayedCurrency[target]);
             rect.anchoredPosition=new Vector2(0,-8-18*elapsed);
             var color=target.color;color.a=1-Mathf.Clamp01((elapsed-duration)/.7f);label.color=color;
             yield return null;
@@ -288,4 +292,3 @@ public sealed class PortraitMenuTopBarBootstrap : MonoBehaviour
         }
     }
 }
-

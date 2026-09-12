@@ -81,6 +81,7 @@ public sealed class MultiplayerPanelLayout : MonoBehaviour
                     if(group.name=="CategoryList"||group.name=="RankOptionList"||group.name=="FullGroupList"||group.name=="FullDetailList")
                     {
                         var active=group.transform as RectTransform;
+                        if(active.parent!=scroll.viewport)active.SetParent(scroll.viewport,false);
                         var wrapper=active.parent as RectTransform;
                         if(wrapper!=null && wrapper!=scroll.viewport)
                         {
