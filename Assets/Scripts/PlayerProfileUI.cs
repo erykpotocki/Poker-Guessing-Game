@@ -265,22 +265,24 @@ public sealed class PlayerProfileUI : MonoBehaviour, IPointerDownHandler
         if(section=="frame")
         {
         Text(body,"RAMKI",8,y,width-16,64,38); y += 70;
-        const int frameColumns=5;
+        const int frameColumns=4;
         float frameCell=(width-16)/frameColumns;
-        float frameSize=Mathf.Min(150,frameCell-12);
-        FrameTile("none",null,8,y,frameSize,true,data.Profile.SelectedFrameId=="none");
-        FrameTile("classic_wood",Resources.Load<Sprite>("Cosmetics/ClassicWood"),8+frameCell,y,frameSize,
+        float frameSize=frameCell-14;
+        float frameLeft=8+(frameCell-frameSize)*.5f;
+        float frameRowHeight=frameSize+54;
+        FrameTile("none",null,frameLeft,y,frameSize,true,data.Profile.SelectedFrameId=="none");
+        FrameTile("classic_wood",Resources.Load<Sprite>("Cosmetics/ClassicWood"),frameLeft+frameCell,y,frameSize,
             data.Inventory.OwnedFrames.Contains("classic_wood"),data.Profile.SelectedFrameId=="classic_wood");
         int[] frameLevels=LevelFrameCatalog.Levels;
         for(int i=0;i<frameLevels.Length;i++)
         {
             int position=i+2;
             string id="level:"+frameLevels[i];
-            FrameTile(id,LevelFrameCatalog.Resolve(id),8+(position%frameColumns)*frameCell,
-                y+(position/frameColumns)*(frameSize+44),frameSize,data.Inventory.OwnedFrames.Contains(id),data.Profile.SelectedFrameId==id);
-            Text(body,"LVL "+frameLevels[i],8+(position%frameColumns)*frameCell,y+(position/frameColumns)*(frameSize+44)+frameSize,frameSize,30,20).alignment=TextAlignmentOptions.Center;
+            FrameTile(id,LevelFrameCatalog.Resolve(id),frameLeft+(position%frameColumns)*frameCell,
+                y+(position/frameColumns)*frameRowHeight,frameSize,data.Inventory.OwnedFrames.Contains(id),data.Profile.SelectedFrameId==id);
+            Text(body,"LVL "+frameLevels[i],frameLeft+(position%frameColumns)*frameCell,y+(position/frameColumns)*frameRowHeight+frameSize+4,frameSize,34,26).alignment=TextAlignmentOptions.Center;
         }
-        y+=Mathf.Ceil((frameLevels.Length+2)/(float)frameColumns)*(frameSize+44);
+        y+=Mathf.Ceil((frameLevels.Length+2)/(float)frameColumns)*frameRowHeight;
         }
         if(section=="back")
         {
