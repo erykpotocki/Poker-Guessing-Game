@@ -6,11 +6,11 @@ using UnityEngine.UI;
 
 public sealed class SpinRewardUI : MonoBehaviour
 {
-    private TMP_Text timer, result;
+    private TMP_Text timer, spinCount, result;
     private Button spin;
     private RectTransform wheel;
     private RectTransform panel, rewardPreview;
-    private TMP_Text headline, hint, spinCaption;
+    private TMP_Text headline, spinCaption;
     private Image spinBackground;
     private bool spinning;
     private RectTransform advertisement;
@@ -56,10 +56,10 @@ public sealed class SpinRewardUI : MonoBehaviour
     }
     private void Build()
     {
-        panel=Box("UtilitySpinPanel",transform,Vector2.zero,new Vector2(820,1320));panel.gameObject.AddComponent<Image>().color=new Color(.025f,.045f,.04f,1f);
+        panel=Box("UtilitySpinPanel",transform,Vector2.zero,new Vector2(820,1400));panel.gameObject.AddComponent<Image>().color=new Color(.025f,.045f,.04f,1f);
         Button panelHit=panel.gameObject.AddComponent<Button>();panelHit.transition=Selectable.Transition.None;
-        Text(panel,"KOŁO NAGRÓD",new Vector2(0,590),new Vector2(590,76),40).characterSpacing=6;
-        Button close=Action(panel,"",new Vector2(355,590),new Vector2(96,96),()=>Destroy(gameObject));
+        Text(panel,"KOŁO NAGRÓD",new Vector2(0,630),new Vector2(590,76),40).characterSpacing=6;
+        Button close=Action(panel,"",new Vector2(355,630),new Vector2(96,96),()=>Destroy(gameObject));
         close.GetComponent<Image>().color=Color.clear;close.transition=Selectable.Transition.None;
         foreach(float angle in new[]{45f,-45f})
         {
@@ -68,21 +68,21 @@ public sealed class SpinRewardUI : MonoBehaviour
             var ink=stroke.gameObject.AddComponent<Image>();ink.color=new Color(1,1,1,.8f);ink.raycastTarget=false;
         }
         GameObject wheelObject = new GameObject("RewardWheel", typeof(RectTransform), typeof(Image)); wheelObject.transform.SetParent(panel, false);
-        wheel = wheelObject.transform as RectTransform; wheel.anchorMin=wheel.anchorMax=wheel.pivot=new Vector2(.5f,.5f); wheel.anchoredPosition=new Vector2(0,185); wheel.sizeDelta=new Vector2(620,620);
+        wheel = wheelObject.transform as RectTransform; wheel.anchorMin=wheel.anchorMax=wheel.pivot=new Vector2(.5f,.5f); wheel.anchoredPosition=new Vector2(0,230); wheel.sizeDelta=new Vector2(600,600);
         Image wheelImage=wheelObject.GetComponent<Image>(); wheelImage.sprite=Resources.Load<Sprite>("SpinAssets/spin kolo"); wheelImage.preserveAspect=true; wheelImage.raycastTarget=false;
-        Text(panel,"▼",new Vector2(0,515),new Vector2(88,76),52).color=new Color(1f,.78f,.18f);
-        headline=Text(panel,"TWÓJ SZCZĘŚLIWY MOMENT",new Vector2(0,-190),new Vector2(740,78),38);
+        Text(panel,"▼",new Vector2(0,560),new Vector2(88,76),52).color=new Color(1f,.78f,.18f);
+        headline=Text(panel,"TWÓJ SZCZĘŚLIWY MOMENT",new Vector2(0,-135),new Vector2(740,78),38);
         headline.fontStyle=FontStyles.Bold;
-        result=Text(panel,"Zakręć i odkryj swoją nagrodę",new Vector2(0,-280),new Vector2(720,64),30);
-        rewardPreview=Box("RewardPreview",panel,new Vector2(0,-135),new Vector2(176,176));rewardPreview.gameObject.SetActive(false);
-        hint=Text(panel,"",new Vector2(0,-370),new Vector2(720,50),26);
-        hint.color=new Color(.7f,.77f,.72f);
-        spin=Action(panel,"Zakręć spinem",new Vector2(0,-555),new Vector2(720,120),Spin);
+        result=Text(panel,"Zakręć i odkryj swoją nagrodę",new Vector2(0,-225),new Vector2(720,86),32);
+        rewardPreview=Box("RewardPreview",panel,new Vector2(0,-70),new Vector2(176,176));rewardPreview.gameObject.SetActive(false);
+
+        spin=Action(panel,"Zakręć spinem",new Vector2(0,-578),new Vector2(720,112),Spin);
         spinCaption=spin.GetComponentInChildren<TMP_Text>();spinBackground=spin.GetComponent<Image>();
-        timer=Text(panel,"",new Vector2(0,-420),new Vector2(740,140),42);
+        spinCount=Text(panel,"",new Vector2(0,-350),new Vector2(720,72),54);
+        timer=Text(panel,"",new Vector2(0,-448),new Vector2(720,100),32);
         Canvas.ForceUpdateCanvases();
         var root=transform as RectTransform;
-        float scale=Mathf.Min(1f,Mathf.Min((root.rect.width-24)/820f,(root.rect.height-24)/1320f));
+        float scale=Mathf.Min(1f,Mathf.Min((root.rect.width-24)/820f,(root.rect.height-24)/1400f));
         panel.localScale=Vector3.one*Mathf.Max(.1f,scale);
         Refresh();
     }
@@ -113,11 +113,12 @@ public sealed class SpinRewardUI : MonoBehaviour
     private IEnumerator SpinWheel()
     {
         if (!PlayerProfileService.CanSpin && PlayerProfileService.Data.Wheel.PendingPrize==null) { Refresh(); yield break; }
-        spinning=true; spin.interactable=false; result.text="";
+        spinning=true; spin.interactable=false; result.text="Koło wybiera Twoją nagrodę…";
+        result.fontSize=32;result.rectTransform.sizeDelta=new Vector2(720,86);
         rewardPreview.gameObject.SetActive(false);headline.text="POWODZENIA!";
-        headline.rectTransform.anchoredPosition=new Vector2(0,-190);headline.fontSize=38;
-        wheel.localScale=Vector3.one;wheel.anchoredPosition=new Vector2(0,185);
-        hint.text="";
+        headline.rectTransform.anchoredPosition=new Vector2(0,-135);headline.fontSize=38;
+        wheel.localScale=Vector3.one;wheel.anchoredPosition=new Vector2(0,230);
+
         // Persist the single result before animation: closing/reopening the
         // overlay cannot grant it twice or lose an already-won diamond.
         string reward=PlayerProfileService.Spin(out int sector,out Sprite avatar);
@@ -126,10 +127,10 @@ public sealed class SpinRewardUI : MonoBehaviour
         float target=start+1440f+Mathf.Repeat(sector*45f-start,360f), elapsed=0f;
         while(elapsed<4f){elapsed+=Time.unscaledDeltaTime;float t=Mathf.Clamp01(elapsed/4f);float eased=1f-Mathf.Pow(1f-t,3f);wheel.localEulerAngles=new Vector3(0,0,Mathf.Lerp(start,target,eased));yield return null;}
         headline.text="Gratulacje!";headline.fontSize=64;
-        headline.rectTransform.anchoredPosition=new Vector2(0,15);
+        headline.rectTransform.anchoredPosition=new Vector2(0,80);
         result.text="Wygrywasz\n"+reward;result.fontSize=38;
-        result.rectTransform.sizeDelta=new Vector2(720,108);
-        hint.text=avatar!=null?"Znajdziesz w swoim profilu":"Odbierasz nagrodę…";
+        result.rectTransform.sizeDelta=new Vector2(720,92);
+
         foreach(Transform child in rewardPreview)Destroy(child.gameObject);
         var portrait=Box("Prize",rewardPreview,Vector2.zero,new Vector2(168,168));
         if(avatar!=null)
@@ -147,7 +148,7 @@ public sealed class SpinRewardUI : MonoBehaviour
         rewardPreview.gameObject.SetActive(true);
         yield return Celebrate();
         PlayerProfileService.ClaimSpinPrize();
-        hint.text="";
+
         spinning=false; Refresh();
     }
     private IEnumerator Celebrate()
@@ -171,7 +172,7 @@ public sealed class SpinRewardUI : MonoBehaviour
             elapsed+=Time.unscaledDeltaTime;float t=Mathf.Clamp01(elapsed/1.4f);
             float settle=1-Mathf.Pow(1-Mathf.Clamp01(elapsed/.5f),3);
             wheel.localScale=Vector3.one*Mathf.Lerp(1,.62f,settle);
-            wheel.anchoredPosition=Vector2.Lerp(new Vector2(0,185),new Vector2(0,300),settle);
+            wheel.anchoredPosition=Vector2.Lerp(new Vector2(0,230),new Vector2(0,350),settle);
             rewardPreview.localScale=Vector3.one*(1+.12f*Mathf.Sin(t*Mathf.PI*3)*(1-t));
             for(int i=0;i<glints.Length;i++)
             {
@@ -190,11 +191,11 @@ public sealed class SpinRewardUI : MonoBehaviour
     {
         if(timer==null||spin==null)return;TimeSpan left=PlayerProfileService.SpinRemaining;spin.interactable=!spinning;
         int charges=PlayerProfileService.SpinCharges;
-        timer.fontSize=38;timer.rectTransform.sizeDelta=new Vector2(760,140);
+        spinCount.text=$"{charges}/3 spiny";
         string countdown=$"{(int)left.TotalHours:00}:{left.Minutes:00}:{left.Seconds:00}";
-        timer.text=$"<size=160%>{charges}/3 spiny</size>\n"+(charges==3?"Posiadasz 3 spiny. Zakręć, by poznać swoją nagrodę!":charges==0?$"Wróć za {countdown}, by spróbować ponownie!":$"Do odnowienia kolejnego spina pozostało {countdown}");
+        timer.text=charges==3?"Wszystkie spiny dostępne":$"<size=28>Kolejny spin za</size>\n<size=40>{countdown}</size>";
         spinCaption.text=charges>0||PlayerProfileService.Data.Wheel.PendingPrize!=null?"Zakręć spinem":"Obejrzyj reklamę, by zakręcić już teraz!";
-        spinCaption.fontSize=spin.interactable?30:25;
+        spinCaption.fontSize=32;
         spinBackground.color=spin.interactable?new Color(1,.78f,.25f):new Color(.19f,.25f,.22f);
         spinCaption.color=spin.interactable?new Color(.08f,.06f,.02f):new Color(.7f,.77f,.72f);
     }

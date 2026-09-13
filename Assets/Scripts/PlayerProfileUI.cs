@@ -17,10 +17,16 @@ public sealed class PlayerProfileUI : MonoBehaviour, IPointerDownHandler
     private Image nicknameCaret;
     private int lastCaretPosition=-1;
     private float caretChangedAt;
+    private bool focusNicknameAtEnd;
     private void LateUpdate()
     {
         if(nicknameCaret==null||nicknameInput==null)return;
         bool focused=nicknameInput.isFocused;
+        if(focused&&focusNicknameAtEnd)
+        {
+            nicknameInput.MoveTextEnd(false);nicknameInput.ForceLabelUpdate();
+            focusNicknameAtEnd=false;lastCaretPosition=-1;caretChangedAt=Time.unscaledTime;
+        }
         int position=nicknameInput.caretPosition;
         if(!focused){nicknameCaret.enabled=false;lastCaretPosition=-1;return;}
         if(position!=lastCaretPosition){lastCaretPosition=position;caretChangedAt=Time.unscaledTime;}
@@ -40,6 +46,10 @@ public sealed class PlayerProfileUI : MonoBehaviour, IPointerDownHandler
         else{x=text.rectTransform.rect.xMin;top=text.rectTransform.rect.center.y+text.fontSize*.5f;bottom=top-text.fontSize;}
         RectTransform caret=nicknameCaret.rectTransform;
         caret.position=text.rectTransform.TransformPoint(new Vector3(x+2,(top+bottom)*.5f,0));
+        var caretViewport=nicknameInput.textViewport;
+        var caretPosition=caretViewport.InverseTransformPoint(caret.position);
+        caretPosition.x=Mathf.Clamp(caretPosition.x,caretViewport.rect.xMin+3,caretViewport.rect.xMax-3);
+        caret.position=caretViewport.TransformPoint(caretPosition);
         caret.sizeDelta=new Vector2(Mathf.Max(3,2/Mathf.Max(.01f,Mathf.Abs(caret.lossyScale.x))),Mathf.Max(24,top-bottom));
         caret.SetAsLastSibling();
     }
@@ -161,7 +171,7 @@ public sealed class PlayerProfileUI : MonoBehaviour, IPointerDownHandler
         input.lineType = TMP_InputField.LineType.SingleLine;
         TMP_Text nicknameStatus=Text(root,"Dotknij nicku, aby go zmienić",left+172,top+158,width-172,28,20);
         nicknameStatus.color=new Color(1f,.91f,.7f,.45f);
-        input.onSelect.AddListener(_=>{keyboardWasVisible=false;underline.color=new Color(1f,.82f,.32f,.8f);nicknameStatus.text="";StartCoroutine(FocusNickname(input));});
+        input.onSelect.AddListener(_=>{keyboardWasVisible=false;underline.color=new Color(1f,.82f,.32f,.8f);nicknameStatus.text="";focusNicknameAtEnd=true;caretChangedAt=Time.unscaledTime;});
         input.onValueChanged.AddListener(value=>{
             // Save valid edits without rewriting the field, caret or an incomplete draft.
             bool saved=PlayerProfileService.SetNickname(value);
@@ -291,11 +301,6 @@ public sealed class PlayerProfileUI : MonoBehaviour, IPointerDownHandler
         y+=Mathf.Ceil(backs.BackCount/(float)backColumns)*(backHeight+24);
         }
         body.sizeDelta = new Vector2(width,y);
-    }
-    private System.Collections.IEnumerator FocusNickname(TMP_InputField input)
-    {
-        yield return null;
-        if(input!=null&&input.isFocused){input.MoveTextEnd(false);input.ForceLabelUpdate();lastCaretPosition=-1;}
     }
     private void Achievement(string title,int value,int target,ref float y,float width)
     { Text(body,title+"   "+Mathf.Min(value,target)+" / "+target,8,y,width-16,76,28); y+=84; }
