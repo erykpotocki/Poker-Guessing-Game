@@ -23,7 +23,6 @@ public class ResumeStateTracker : MonoBehaviour
         if (!PhotonNetwork.InRoom)
             return;
 
-        PlayerPrefs.SetInt(ResumePendingPrefsKey, 1);
-        PlayerPrefs.Save();
+        ResumeTicket.RememberCurrentRoom();
     }
 }

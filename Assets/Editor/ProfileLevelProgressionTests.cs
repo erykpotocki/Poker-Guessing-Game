@@ -4,6 +4,17 @@ using PokerProfile;
 
 public class ProfileLevelProgressionTests
 {
+    [Test]
+    public void ResumeExpiresAfterFiveMinutesAndRejectsLegacyOrFutureDates()
+    {
+        long now=DateTime.UtcNow.Ticks;
+        Assert.That(ResumeTicket.WithinWindow(now,now),Is.True);
+        Assert.That(ResumeTicket.WithinWindow(now-TimeSpan.TicksPerMinute*4,now),Is.True);
+        Assert.That(ResumeTicket.WithinWindow(now-TimeSpan.TicksPerMinute*5,now),Is.False);
+        Assert.That(ResumeTicket.WithinWindow(now-TimeSpan.TicksPerDay,now),Is.False);
+        Assert.That(ResumeTicket.WithinWindow(0,now),Is.False);
+        Assert.That(ResumeTicket.WithinWindow(now+1,now),Is.False);
+    }
     [UnityEngine.TestTools.UnityTest]
     public System.Collections.IEnumerator WalletGainSurvivesSceneBarReplacement()
     {

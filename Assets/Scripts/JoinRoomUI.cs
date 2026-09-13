@@ -115,6 +115,7 @@ public class JoinRoomUI : MonoBehaviourPunCallbacks
         PhotonNetwork.NickName = nick;
 
         PlayerPrefs.SetString("lastNick", nick);
+        ResumeTicket.Clear();
         PlayerPrefs.SetString("lastRoomCode", roomCode);
         PlayerPrefs.Save();
 

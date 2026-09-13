@@ -103,6 +103,7 @@ public class CreateRoomUI : MonoBehaviourPunCallbacks
         EnsurePersistentUserId();
 
         string code = GenerateCode(4);
+        ResumeTicket.Clear();
         PlayerPrefs.SetString("lastRoomCode", code);
         PlayerPrefs.Save();
 

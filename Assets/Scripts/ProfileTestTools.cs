@@ -37,17 +37,22 @@ public static class ProfileTestTools
     public static void ShowResumePrompt(Canvas canvas,AutoResumeRoom resume)
     {
         if(canvas.rootCanvas.transform.Find("ResumePrompt")!=null)return;
-        var root=Box(canvas.rootCanvas.transform,"ResumePrompt",0,0,0,0);
-        root.anchorMin=Vector2.zero;root.anchorMax=Vector2.one;root.offsetMin=root.offsetMax=Vector2.zero;
-        root.gameObject.AddComponent<Image>().color=new Color(0,0,0,.74f);
-        var layer=root.gameObject.AddComponent<Canvas>();layer.overrideSorting=true;layer.sortingOrder=1900;root.gameObject.AddComponent<GraphicRaycaster>();
-        var panel=Box(root,"ResumeCard",0,0,760,500);panel.anchorMin=panel.anchorMax=panel.pivot=new Vector2(.5f,.5f);
-        var bounds=((RectTransform)canvas.rootCanvas.transform).rect;panel.localScale=Vector3.one*Mathf.Min(1,Mathf.Min(bounds.width/800,bounds.height/530));
-        var title=Label(panel,"WRÓĆ DO SWOJEJ GRY",720,80);title.fontSize=40;title.rectTransform.anchoredPosition=new Vector2(0,390);
-        var status=Label(panel,"Masz zapisaną grę multiplayer.\nCzy chcesz ponownie do niej dołączyć?",720,150);status.rectTransform.anchoredPosition=new Vector2(0,230);
-        resume.Status=value=>{if(status!=null)status.text=value;};
-        Action(panel,"DOŁĄCZ PONOWNIE",0,130,600,resume.ResumeSavedRoom);
-        Action(panel,"ZOSTAŃ W MENU",0,35,600,()=>{resume.Status=null;Object.Destroy(root.gameObject);});
+        var root=ShopUI.Overlay(canvas,"ResumePrompt");
+        root.GetComponent<Image>().color=new Color(0,0,0,.9f);
+        root.GetComponent<Canvas>().sortingOrder=1900;
+        var panel=ShopUI.Rect("ResumeCard",root,0,0,820,650);
+        panel.anchorMin=panel.anchorMax=panel.pivot=new Vector2(.5f,.5f);panel.anchoredPosition=Vector2.zero;
+        panel.localScale=Vector3.one*Mathf.Min(1,Mathf.Min((root.rect.width-40)/820,(root.rect.height-40)/650));
+        panel.gameObject.AddComponent<Image>().color=new Color(.025f,.06f,.048f,1);
+        var accent=ShopUI.Rect("Accent",panel,48,40,724,3).gameObject.AddComponent<Image>();
+        accent.color=new Color(.85f,.64f,.24f);accent.raycastTarget=false;
+        var title=ShopUI.Text(panel,"WRÓĆ DO GRY",40,70,740,80,48);title.fontStyle=FontStyles.Bold;
+        var status=ShopUI.Text(panel,"Połączenie z rozpoczętym meczem zostało przerwane.\nMożesz jeszcze wrócić do stołu.",60,170,700,130,32);
+        ShopUI.Text(panel,"Powrót jest dostępny przez 5 minut.\nJeśli mecz się zakończył, zamkniemy to okno.",60,310,700,80,25).color=new Color(.7f,.77f,.72f);
+        var join=ShopUI.Button(panel,"DOŁĄCZ PONOWNIE",60,420,700,82,resume.ResumeSavedRoom);
+        var dismiss=ShopUI.Button(panel,"ZOSTAŃ W MENU",60,522,700,76,resume.Dismiss);
+        resume.Expired=()=>{resume.Status=null;resume.Expired=null;if(root!=null){root.gameObject.SetActive(false);Object.Destroy(root.gameObject);}};
+        resume.Status=value=>{if(status!=null)status.text=value;if(join!=null)join.interactable=!resume.Busy;if(dismiss!=null)dismiss.interactable=!resume.Busy;};
     }
     public static void InstallLogo(Transform root)
     {

@@ -188,7 +188,7 @@ public class BackToMenu : MonoBehaviourPunCallbacks
         leaveForResume=PhotonNetwork.InRoom&&PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("gameStarted",out object started)&&started is bool playing&&playing&&
             !(PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue("gameEnded",out object ended)&&ended is bool finished&&finished);
         NetworkBootstrap.PreserveRoomOnLeave=leaveForResume;
-        if(leaveForResume){PlayerPrefs.SetString(LastRoomCodePrefsKey,PhotonNetwork.CurrentRoom.Name);PlayerPrefs.SetInt(ResumePendingPrefsKey,1);PlayerPrefs.Save();}
+        if(leaveForResume)ResumeTicket.RememberCurrentRoom();
         else ClearResumeData();
 
         if (PhotonNetwork.InRoom)
@@ -209,8 +209,6 @@ public class BackToMenu : MonoBehaviourPunCallbacks
 
     private void ClearResumeData()
     {
-        PlayerPrefs.SetInt(ResumePendingPrefsKey, 0);
-        PlayerPrefs.DeleteKey(LastRoomCodePrefsKey);
-        PlayerPrefs.Save();
+        ResumeTicket.Clear();
     }
 }

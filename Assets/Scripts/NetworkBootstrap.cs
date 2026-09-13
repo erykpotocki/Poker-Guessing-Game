@@ -16,6 +16,17 @@ public class NetworkBootstrap : MonoBehaviourPunCallbacks
     private bool recoveryRunning;
     private bool joinedRoomThisSession;
     public static bool PreserveRoomOnLeave;
+    private float nextResumeHeartbeat;
+    private void Update()
+    {
+        if(!PhotonNetwork.InRoom||Time.unscaledTime<nextResumeHeartbeat)return;
+        nextResumeHeartbeat=Time.unscaledTime+30;
+        ResumeTicket.RememberCurrentRoom();
+    }
+    public override void OnRoomPropertiesUpdate(ExitGames.Client.Photon.Hashtable changed)
+    {
+        if(changed.ContainsKey("gameStarted")||changed.ContainsKey("gameEnded"))ResumeTicket.RememberCurrentRoom();
+    }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void EnsureBootstrapExists()
@@ -87,9 +98,7 @@ public class NetworkBootstrap : MonoBehaviourPunCallbacks
         rejoinAfterMasterConnection = false;
         recoveryRunning = false;
         PreserveRoomOnLeave=false;
-        PlayerPrefs.SetString(LastRoomCodePrefsKey,PhotonNetwork.CurrentRoom.Name);
-        PlayerPrefs.SetInt(ResumePendingPrefsKey, 1);
-        PlayerPrefs.Save();
+        ResumeTicket.RememberCurrentRoom();
     }
 
     private void OnApplicationPause(bool paused)
@@ -111,9 +120,7 @@ public class NetworkBootstrap : MonoBehaviourPunCallbacks
         joinedRoomThisSession = false;
         shouldRecoverRoom = rejoinAfterMasterConnection = recoveryRunning = false;
         if(PreserveRoomOnLeave)return;
-        PlayerPrefs.SetInt(ResumePendingPrefsKey, 0);
-        PlayerPrefs.DeleteKey(LastRoomCodePrefsKey);
-        PlayerPrefs.Save();
+        ResumeTicket.Clear();
     }
 
     private void OnApplicationFocus(bool focused)
@@ -131,9 +138,7 @@ public class NetworkBootstrap : MonoBehaviourPunCallbacks
             return;
 
         shouldRecoverRoom = true;
-        PlayerPrefs.SetString(LastRoomCodePrefsKey, PhotonNetwork.CurrentRoom.Name);
-        PlayerPrefs.SetInt(ResumePendingPrefsKey, 1);
-        PlayerPrefs.Save();
+        ResumeTicket.RememberCurrentRoom();
     }
 
     private IEnumerator RecoverRoomAfterResume()
@@ -168,7 +173,7 @@ public class NetworkBootstrap : MonoBehaviourPunCallbacks
     {
         // A stale saved room must not rotate a fresh app launch into a match.
         // Automatic recovery is only for a room entered during this app session.
-        if (!joinedRoomThisSession || recoveryRunning)
+        if (!joinedRoomThisSession || recoveryRunning || !ResumeTicket.IsAvailable())
             return;
 
         recoveryRunning = true;
@@ -177,6 +182,7 @@ public class NetworkBootstrap : MonoBehaviourPunCallbacks
 
     private void TryRejoinSavedRoom()
     {
+        if(!ResumeTicket.IsAvailable()){recoveryRunning=false;return;}
         string roomCode = PlayerPrefs.GetString(LastRoomCodePrefsKey, "");
         if (!string.IsNullOrWhiteSpace(roomCode) && !PhotonNetwork.InRoom)
             PhotonNetwork.RejoinRoom(roomCode);
@@ -186,6 +192,7 @@ public class NetworkBootstrap : MonoBehaviourPunCallbacks
 
     public override void OnJoinRoomFailed(short returnCode, string message)
     {
+        if(recoveryRunning)ResumeTicket.Clear();
         recoveryRunning = false;
         Debug.LogWarning($"Nie udało się wrócić do pokoju: {message} ({returnCode})");
     }

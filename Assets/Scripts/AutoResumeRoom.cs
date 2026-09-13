@@ -18,11 +18,13 @@ public class AutoResumeRoom : MonoBehaviourPunCallbacks
     private bool triedAutoResume = false;
     private bool leavingRejectedRoom = false;
     private bool connecting;
+    public bool Busy => connecting || triedAutoResume;
+    public System.Action Expired;
     public System.Action<string> Status;
     private IEnumerator Start()
     {
         yield return null;
-        if(SceneManager.GetActiveScene().name!="MainMenu"||PlayerPrefs.GetInt(ResumePendingPrefsKey,0)!=1||string.IsNullOrWhiteSpace(PlayerPrefs.GetString(LastRoomCodePrefsKey,"")))yield break;
+        if(SceneManager.GetActiveScene().name!="MainMenu"||!ResumeTicket.IsAvailable())yield break;
         Canvas canvas=GetComponentInParent<Canvas>();if(canvas==null)canvas=FindFirstObjectByType<Canvas>();
         if(canvas!=null)ProfileTestTools.ShowResumePrompt(canvas,this);
     }
@@ -32,6 +34,7 @@ public class AutoResumeRoom : MonoBehaviourPunCallbacks
     public void ResumeSavedRoom()
     {
         if(triedAutoResume||connecting)return;
+        if(!ResumeTicket.IsAvailable()){Dismiss();return;}
         connecting=true;
         StartCoroutine(TryAutoResume());
     }
@@ -54,14 +57,14 @@ public class AutoResumeRoom : MonoBehaviourPunCallbacks
         FindFirstObjectByType<NetworkBootstrap>()?.ConnectIfNeeded();
         while (!PhotonNetwork.IsConnectedAndReady && timer < waitForPhotonSeconds)
         {
-            timer += Time.deltaTime;
+            timer += Time.unscaledDeltaTime;
             yield return null;
         }
 
         if (!PhotonNetwork.IsConnectedAndReady)
         {
-            Status?.Invoke("Brak połączenia. Spróbuj ponownie.");
             connecting=false;
+            Status?.Invoke("Brak połączenia. Spróbuj ponownie.");
             yield break;
         }
 
@@ -69,7 +72,9 @@ public class AutoResumeRoom : MonoBehaviourPunCallbacks
             yield break;
 
         connecting=false;triedAutoResume = true;
+        if(!ResumeTicket.IsAvailable()){Dismiss();yield break;}
         if(!PhotonNetwork.RejoinRoom(roomCode)){triedAutoResume=false;Status?.Invoke("Połączenie jeszcze nie jest gotowe. Spróbuj ponownie.");}
+        else Status?.Invoke("Dołączam do meczu…");
     }
 
     public override void OnJoinedRoom()
@@ -94,10 +99,11 @@ public class AutoResumeRoom : MonoBehaviourPunCallbacks
             }
         }
 
-        if (gameEnded)
+        if (gameEnded || !gameStarted)
         {
             Status?.Invoke("Ta gra już się zakończyła. Możesz zamknąć to okno i rozpocząć nową.");
             ClearResumePrefs();
+            Expired?.Invoke();
 
             if (PhotonNetwork.InRoom && !leavingRejectedRoom)
             {
@@ -143,7 +149,7 @@ public class AutoResumeRoom : MonoBehaviourPunCallbacks
         if (!triedAutoResume) return;
         triedAutoResume=false;
         connecting=false;
-        Status?.Invoke("Nie można wrócić. Pokój mógł wygasnąć lub mecz się zakończył.");
+        ClearResumePrefs();Expired?.Invoke();
         Debug.LogWarning($"AutoResumeRoom: Rejoin failed: {message} ({returnCode})");
     }
 
@@ -158,8 +164,44 @@ public class AutoResumeRoom : MonoBehaviourPunCallbacks
 
     private void ClearResumePrefs()
     {
-        PlayerPrefs.SetInt(ResumePendingPrefsKey, 0);
-        PlayerPrefs.DeleteKey(LastRoomCodePrefsKey);
-        PlayerPrefs.Save();
+        ResumeTicket.Clear();
+    }
+    public void Dismiss()
+    {
+        StopAllCoroutines();connecting=triedAutoResume=false;
+        ClearResumePrefs();Expired?.Invoke();
+    }
+    private void Update()
+    {
+        if(Expired!=null&&!Busy&&!ResumeTicket.IsAvailable())Dismiss();
+    }
+}
+
+public static class ResumeTicket
+{
+    private const string SavedAtKey="resumeSavedAtUtcV2";
+    public static bool WithinWindow(long savedAt,long now) => savedAt>0 && now>=savedAt && now-savedAt<System.TimeSpan.TicksPerMinute*5;
+    public static bool IsAvailable()
+    {
+        bool valid=PlayerPrefs.GetInt("ResumePending",0)==1 && !string.IsNullOrWhiteSpace(PlayerPrefs.GetString("lastRoomCode","")) &&
+            long.TryParse(PlayerPrefs.GetString(SavedAtKey,""),out long savedAt) && WithinWindow(savedAt,System.DateTime.UtcNow.Ticks);
+        if(!valid&&PlayerPrefs.GetInt("ResumePending",0)==1)Clear();
+        return valid;
+    }
+    public static void RememberCurrentRoom()
+    {
+        var room=PhotonNetwork.CurrentRoom;
+        if(room==null)return;
+        bool started=room.CustomProperties.TryGetValue("gameStarted",out object start)&&start is bool s&&s;
+        bool ended=room.CustomProperties.TryGetValue("gameEnded",out object end)&&end is bool e&&e;
+        if(!started||ended){Clear();return;}
+        PlayerPrefs.SetString("lastRoomCode",room.Name);
+        PlayerPrefs.SetString(SavedAtKey,System.DateTime.UtcNow.Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        PlayerPrefs.SetInt("ResumePending",1);PlayerPrefs.Save();
+    }
+    public static void Clear()
+    {
+        PlayerPrefs.DeleteKey(SavedAtKey);PlayerPrefs.DeleteKey("lastRoomCode");
+        PlayerPrefs.SetInt("ResumePending",0);PlayerPrefs.Save();
     }
 }

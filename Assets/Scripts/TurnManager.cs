@@ -1411,6 +1411,7 @@ public partial class TurnManager : MonoBehaviour, IOnEventCallback
     private void HandleGameOver(bool completedMatch=true)
     {
         isGameOver = true;
+        ResumeTicket.Clear();
         isRoundWaitingForResolution = false;
         isRoundTransitionInProgress = false;
 
